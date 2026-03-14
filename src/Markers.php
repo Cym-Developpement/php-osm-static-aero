@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Image;
 
 
 /**
- * DantSu\OpenStreetMapStaticAPI\Markers display markers on the map.
+ * Ycdev\OsmStaticAero\Markers display markers on the map.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project

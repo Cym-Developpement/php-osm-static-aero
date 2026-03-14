@@ -1,13 +1,13 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\TileLayer define tile server url and related configuration
+ * Ycdev\OsmStaticAero\TileLayer define tile server url and related configuration
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Stephan Strate <hello@stephan.codes>
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
