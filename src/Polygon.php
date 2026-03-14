@@ -5,6 +5,7 @@ namespace Ycdev\OsmStaticAero;
 
 use Ycdev\OsmStaticAero\Interfaces\Draw;
 use Ycdev\OsmStaticAero\Image;
+use Ycdev\OsmStaticAero\Utils\GeographicConverter;
 
 /**
  * Ycdev\OsmStaticAero\Polygon draw polygon on the map.
@@ -55,6 +56,25 @@ class Polygon implements Draw
     {
         $this->points[] = $latLng;
         return $this;
+    }
+
+    /**
+     * Create a rectangular polygon from a start point, width and height in meters.
+     * @param LatLng $start Top-left corner of the rectangle
+     * @param float $width Width in meters
+     * @param float $height Height in meters
+     * @return $this Fluent interface
+     */
+    public function rectangle(LatLng $start, float $width, float $height): Polygon
+    {
+        $p2 = GeographicConverter::metersToLatLng($start, $width, 90);
+        $p3 = GeographicConverter::metersToLatLng($p2, $height, 180);
+        $p4 = GeographicConverter::metersToLatLng($p3, $width, 270);
+
+        return $this->addPoint($start)
+            ->addPoint($p2)
+            ->addPoint($p3)
+            ->addPoint($p4);
     }
 
     /**

@@ -39,6 +39,10 @@ class Circle implements Draw
      * @var LatLng
      */
     private $edge = null;
+    /**
+     * @var bool
+     */
+    private $aeroZoneStyle = false;
 
     /**
      * Circle constructor.
@@ -48,13 +52,14 @@ class Circle implements Draw
      * @param int $strokeWeight pixel weight of the line
      * @param string $fillColor Hexadecimal string color
      */
-    public function __construct(LatLng $center, string $strokeColor, int $strokeWeight, string $fillColor)
+    public function __construct(LatLng $center, string $strokeColor, int $strokeWeight, string $fillColor, bool $aeroZoneStyle = false)
     {
         $this->center = $center;
         $this->edge = $center;
         $this->strokeColor = \str_replace('#', '', $strokeColor);
         $this->strokeWeight = $strokeWeight > 0 ? $strokeWeight : 0;
         $this->fillColor = \str_replace('#', '', $fillColor);
+        $this->aeroZoneStyle = $aeroZoneStyle;
     }
 
     /**
@@ -102,7 +107,12 @@ class Circle implements Draw
             $dImage->drawCircle($center->getX(), $center->getY(), $length * 2, $this->strokeColor);
         }
 
-        $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+        if ($this->aeroZoneStyle) {
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - ($this->strokeWeight * 5)) * 2, 'ffffffff');
+        } else {
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+        }
 
         $image->pasteOn($dImage, 0, 0);
         return $this;

@@ -63,6 +63,10 @@ class OpenStreetMap
      */
     protected $markers = [];
     /**
+     * @var bool Display attribution text
+     */
+    protected $displayAttributionText = true;
+    /**
      * @var Draw[] Array of Line instances
      */
     protected $draws = [];
@@ -73,16 +77,25 @@ class OpenStreetMap
      * @param int $zoom Zoom
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param TileLayer|bool|null $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server. Pass false to disable tiles.
      * @param int $tileSize Tile size in pixels
+     * @param float $factor Scale factor for high resolution
+     * @param bool $displayAttributionText Whether to display attribution text
      */
-    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256)
+    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, $tileLayer = null, int $tileSize = 256, float $factor = 1.0, bool $displayAttributionText = true)
     {
+        $this->displayAttributionText = $displayAttributionText;
+
         if ($tileLayer === null) {
             $tileLayer = TileLayer::defaultTileLayer();
         }
 
-        $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize);
+        if ($tileLayer === false) {
+            $this->mapData = new MapData($centerMap, $zoom, new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        } else {
+            $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        }
+
         $this->layers = [$tileLayer];
     }
 
@@ -178,9 +191,10 @@ class OpenStreetMap
     {
         $outputSize = $this->mapData->getOutputSize();
         $tileSize = $this->mapData->getTileSize();
+        $factor = $this->mapData->getFactor();
         $boundingBox = MapData::getBoundingBoxFromPoints($points);
         $latLngZoom = MapData::getCenterAndZoomFromBoundingBox($boundingBox[0], $boundingBox[1], $padding, $outputSize->getX(), $outputSize->getY(), $tileSize);
-        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize);
+        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize, $factor);
         return $this;
     }
 
@@ -207,6 +221,9 @@ class OpenStreetMap
         $tileSize = $this->mapData->getTileSize();
 
         foreach ($this->layers as $tileLayer) {
+            if ($tileLayer === false) {
+                continue;
+            }
             $yTile = $this->mapData->getTileTopLeft()->getY();
             for ($y = $startY; $y < $imgSize->getY(); $y += $tileSize) {
                 $xTile = $this->mapData->getTileTopLeft()->getX();
@@ -275,6 +292,10 @@ class OpenStreetMap
             $markers->draw($image, $this->mapData);
         }
 
-        return $this->drawAttribution($image);
+        if ($this->layers[0] !== false && $this->displayAttributionText) {
+            return $this->drawAttribution($image);
+        }
+
+        return $image;
     }
 }
