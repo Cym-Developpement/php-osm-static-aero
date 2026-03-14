@@ -7,3 +7,4 @@
 /glider-map
 .phpunit.result.cache
 /docs/migration-plan.md
+/examples/output/
