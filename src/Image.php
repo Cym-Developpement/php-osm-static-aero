@@ -1220,7 +1220,7 @@ class Image
             CURLOPT_TIMEOUT        => 5,
         ];
 
-        if (php_sapi_name() !== 'cli') {
+        if (php_sapi_name() !== 'cli' && isset($_SERVER["REQUEST_SCHEME"], $_SERVER["HTTP_HOST"], $_SERVER["REQUEST_URI"])) {
             $defaultCurlOptions[CURLOPT_REFERER] = \strtolower($_SERVER["REQUEST_SCHEME"] . '://' . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"]);
         }
 
