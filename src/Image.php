@@ -201,6 +201,42 @@ class Image
     }
 
     /**
+     * @param string $base64
+     * @return Image
+     */
+    public static function fromBase64(string $base64): Image
+    {
+        return (new Image)->base64($base64);
+    }
+
+    /**
+     * @param string $base64
+     * @return $this
+     */
+    public function base64(string $base64): Image
+    {
+        return $this->data(\base64_decode($base64));
+    }
+
+    /**
+     * @param array $file
+     * @return Image
+     */
+    public static function fromForm(array $file): Image
+    {
+        return (new Image)->form($file);
+    }
+
+    /**
+     * @param array $file
+     * @return $this
+     */
+    public function form(array $file): Image
+    {
+        return $this->path($file['tmp_name']);
+    }
+
+    /**
      * @return $this
      */
     public function destroy(): Image
@@ -362,6 +398,159 @@ class Image
         \imagefilter($this->image, IMG_FILTER_COLORIZE, 0, 0, 0, \round(127 * (1 - $opacity)));
 
         return $this;
+    }
+
+    // ===================== TRANSFORM =====================
+
+    /**
+     * @param float $angle
+     * @return $this
+     */
+    public function rotate(float $angle): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $angle = Geometry2D::degrees0to360($angle);
+
+        if ($angle == 0) {
+            return $this;
+        }
+
+        $rotated = \imagerotate($this->image, $angle, \imagecolorallocatealpha($this->image, 0, 0, 0, 127));
+
+        if ($rotated === false) {
+            return $this;
+        }
+
+        \imagedestroy($this->image);
+        $this->image = $rotated;
+        $this->width = \imagesx($this->image);
+        $this->height = \imagesy($this->image);
+
+        \imagealphablending($this->image, false);
+        \imagesavealpha($this->image, true);
+
+        return $this;
+    }
+
+    /**
+     * @param int $width
+     * @param int $height
+     * @return $this
+     */
+    public function resize(int $width, int $height): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $newImage = \imagecreatetruecolor($width, $height);
+
+        if ($newImage === false) {
+            return $this;
+        }
+
+        \imagealphablending($newImage, false);
+        \imagesavealpha($newImage, true);
+        \imagefill($newImage, 0, 0, \imagecolorallocatealpha($newImage, 0, 0, 0, 127));
+
+        \imagecopyresampled($newImage, $this->image, 0, 0, 0, 0, $width, $height, $this->width, $this->height);
+
+        \imagedestroy($this->image);
+        $this->image = $newImage;
+        $this->width = $width;
+        $this->height = $height;
+
+        return $this;
+    }
+
+    /**
+     * @param int $width
+     * @param int $height
+     * @return $this
+     */
+    public function resizeProportion(int $width, int $height): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $ratio = \min($width / $this->width, $height / $this->height);
+        return $this->resize(\round($this->width * $ratio), \round($this->height * $ratio));
+    }
+
+    /**
+     * @param int $maxWidth
+     * @param int $maxHeight
+     * @return $this
+     */
+    public function downscaleProportion(int $maxWidth, int $maxHeight): Image
+    {
+        if (!$this->isImageDefined() || ($this->width <= $maxWidth && $this->height <= $maxHeight)) {
+            return $this;
+        }
+
+        return $this->resizeProportion($maxWidth, $maxHeight);
+    }
+
+    /**
+     * @param int $width
+     * @param int $height
+     * @param int|string $posX
+     * @param int|string $posY
+     * @return $this
+     */
+    public function crop(int $width, int $height, $posX = Image::ALIGN_CENTER, $posY = Image::ALIGN_MIDDLE): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $posX = $this->convertPosX($posX, $width);
+        $posY = $this->convertPosY($posY, $height);
+
+        $newImage = \imagecreatetruecolor($width, $height);
+
+        if ($newImage === false) {
+            return $this;
+        }
+
+        \imagealphablending($newImage, false);
+        \imagesavealpha($newImage, true);
+        \imagefill($newImage, 0, 0, \imagecolorallocatealpha($newImage, 0, 0, 0, 127));
+
+        \imagecopyresampled($newImage, $this->image, 0, 0, $posX, $posY, $width, $height, $width, $height);
+
+        \imagedestroy($this->image);
+        $this->image = $newImage;
+        $this->width = $width;
+        $this->height = $height;
+
+        return $this;
+    }
+
+    /**
+     * @param int $width
+     * @param int $height
+     * @param int|string $posX
+     * @param int|string $posY
+     * @return $this
+     */
+    public function downscaleAndCrop(int $width, int $height, $posX = Image::ALIGN_CENTER, $posY = Image::ALIGN_MIDDLE): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $ratio = \max($width / $this->width, $height / $this->height);
+
+        if ($ratio < 1) {
+            $this->resize(\round($this->width * $ratio), \round($this->height * $ratio));
+        }
+
+        return $this->crop($width, $height, $posX, $posY);
     }
 
     // ===================== DRAWING =====================
@@ -529,6 +718,118 @@ class Image
         } else {
             \imagefilledrectangle($this->image, $left, $top, $right, $bottom, $color);
         }
+        return $this;
+    }
+
+    /**
+     * @param int $originX
+     * @param int $originY
+     * @param int $dstX
+     * @param int $dstY
+     * @param int $weight
+     * @param int $arrowWidth
+     * @param int $arrowLength
+     * @param string $color
+     * @return $this
+     */
+    public function drawArrow(int $originX, int $originY, int $dstX, int $dstY, int $weight, int $arrowWidth, int $arrowLength, string $color = '#000000'): Image
+    {
+        $angleAndLength = Geometry2D::getAngleAndLengthFromPoints($originX, $originY, $dstX, $dstY);
+        return $this->drawArrowWithAngle($originX, $originY, $angleAndLength['angle'], $angleAndLength['length'], $weight, $arrowWidth, $arrowLength, $color);
+    }
+
+    /**
+     * @param int $originX
+     * @param int $originY
+     * @param float $angle
+     * @param float $length
+     * @param int $weight
+     * @param int $arrowWidth
+     * @param int $arrowLength
+     * @param string $color
+     * @return $this
+     */
+    public function drawArrowWithAngle(int $originX, int $originY, float $angle, float $length, int $weight, int $arrowWidth, int $arrowLength, string $color = '#000000'): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        $angle = Geometry2D::degrees0to360($angle);
+        $stemLength = $length - $arrowLength;
+
+        if ($stemLength > 0) {
+            $this->drawLineWithAngle($originX, $originY, $angle, $stemLength, $weight, $color);
+        }
+
+        $tip = Geometry2D::getDstXY($originX, $originY, $angle, $length);
+        $arrowBase = Geometry2D::getDstXY($originX, $originY, $angle, \max(0, $stemLength));
+
+        $branch1 = Geometry2D::getDstXY($arrowBase['x'], $arrowBase['y'], Geometry2D::degrees0to360($angle - 90), $arrowWidth / 2);
+        $branch2 = Geometry2D::getDstXY($arrowBase['x'], $arrowBase['y'], Geometry2D::degrees0to360($angle + 90), $arrowWidth / 2);
+
+        return $this->drawPolygon(
+            [
+                \round($tip['x']),
+                \round($tip['y']),
+                \round($branch1['x']),
+                \round($branch1['y']),
+                \round($branch2['x']),
+                \round($branch2['y']),
+            ],
+            $color,
+            true
+        );
+    }
+
+    // ===================== FILTERS =====================
+
+    /**
+     * @return $this
+     */
+    public function grayscale(): Image
+    {
+        if (!$this->isImageDefined()) {
+            return $this;
+        }
+
+        \imagefilter($this->image, IMG_FILTER_GRAYSCALE);
+        return $this;
+    }
+
+    /**
+     * @param Image $mask
+     * @return $this
+     */
+    public function alphaMask(Image $mask): Image
+    {
+        if (!$this->isImageDefined() || !$mask->isImageDefined()) {
+            return $this;
+        }
+
+        $maskImage = $mask->getImage();
+        $maskWidth = $mask->getWidth();
+        $maskHeight = $mask->getHeight();
+
+        for ($x = 0; $x < $this->width; $x++) {
+            for ($y = 0; $y < $this->height; $y++) {
+                if ($x >= $maskWidth || $y >= $maskHeight) {
+                    $alpha = 127;
+                } else {
+                    $maskColor = \imagecolorat($maskImage, $x, $y);
+                    $maskRgb = \imagecolorsforindex($maskImage, $maskColor);
+                    $gray = \round(($maskRgb['red'] + $maskRgb['green'] + $maskRgb['blue']) / 3);
+                    $alpha = 127 - \round($gray / 2);
+                }
+
+                $srcColor = \imagecolorat($this->image, $x, $y);
+                $srcRgb = \imagecolorsforindex($this->image, $srcColor);
+
+                $newColor = \imagecolorallocatealpha($this->image, $srcRgb['red'], $srcRgb['green'], $srcRgb['blue'], $alpha);
+                \imagesetpixel($this->image, $x, $y, $newColor);
+            }
+        }
+
         return $this;
     }
 
@@ -823,6 +1124,56 @@ class Image
         return $this->getData(function () {
             $this->displayGIF();
         });
+    }
+
+    /**
+     * @return string
+     */
+    public function getBase64PNG(): string
+    {
+        return \base64_encode($this->getDataPNG());
+    }
+
+    /**
+     * @param int $quality
+     * @return string
+     */
+    public function getBase64JPG(int $quality = -1): string
+    {
+        return \base64_encode($this->getDataJPG($quality));
+    }
+
+    /**
+     * @return string
+     */
+    public function getBase64GIF(): string
+    {
+        return \base64_encode($this->getDataGIF());
+    }
+
+    /**
+     * @return string
+     */
+    public function getBase64SourcePNG(): string
+    {
+        return 'data:image/png;base64,' . $this->getBase64PNG();
+    }
+
+    /**
+     * @param int $quality
+     * @return string
+     */
+    public function getBase64SourceJPG(int $quality = -1): string
+    {
+        return 'data:image/jpeg;base64,' . $this->getBase64JPG($quality);
+    }
+
+    /**
+     * @return string
+     */
+    public function getBase64SourceGIF(): string
+    {
+        return 'data:image/gif;base64,' . $this->getBase64GIF();
     }
 
     // ===================== CACHE / CURL =====================

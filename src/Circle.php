@@ -84,9 +84,7 @@ class Circle implements Draw
     /**
      * Draw the circle on the map image.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     *
-     * @param Image $image The map image (An instance of DantSu\PHPImageEditor\Image)
+     * @param Image $image The map image
      * @param MapData $mapData Bounding box of the map
      * @return $this Fluent interface
      */

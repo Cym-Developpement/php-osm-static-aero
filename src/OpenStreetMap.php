@@ -186,7 +186,6 @@ class OpenStreetMap
 
     /**
      * Get data about the generated map (bounding box, size, OSM tile ids...)
-     * @see https://github.com/DantSu/php-osm-static-api/blob/master/docs/classes/DantSu/OpenStreetMapStaticAPI/MapData.md See more about MapData
      * @return MapData data about the generated map (bounding box, size, OSM tile ids...)
      */
     public function getMapData(): MapData
@@ -196,8 +195,7 @@ class OpenStreetMap
 
     /**
      * Get only the map image.
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     protected function getMapImage(): Image
     {
@@ -263,8 +261,7 @@ class OpenStreetMap
     /**
      * Get the map image with markers and lines.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     public function getImage(): Image
     {
