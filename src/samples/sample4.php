@@ -9,11 +9,11 @@ require_once '../OpenStreetMap.php';
 require_once '../TileLayer.php';
 require_once '../XY.php';
 
-use \DantSu\OpenStreetMapStaticAPI\OpenStreetMap;
-use \DantSu\OpenStreetMapStaticAPI\LatLng;
-use \DantSu\OpenStreetMapStaticAPI\Polygon;
-use \DantSu\OpenStreetMapStaticAPI\Markers;
-use \DantSu\OpenStreetMapStaticAPI\TileLayer;
+use \Ycdev\OsmStaticAero\OpenStreetMap;
+use \Ycdev\OsmStaticAero\LatLng;
+use \Ycdev\OsmStaticAero\Polygon;
+use \Ycdev\OsmStaticAero\Markers;
+use \Ycdev\OsmStaticAero\TileLayer;
 
 \header('Content-type: image/png');
 

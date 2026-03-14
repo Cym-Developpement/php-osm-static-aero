@@ -8,10 +8,10 @@ require_once '../Markers.php';
 require_once '../OpenStreetMap.php';
 require_once '../XY.php';
 
-use \DantSu\OpenStreetMapStaticAPI\OpenStreetMap;
-use \DantSu\OpenStreetMapStaticAPI\LatLng;
-use \DantSu\OpenStreetMapStaticAPI\Line;
-use \DantSu\OpenStreetMapStaticAPI\Markers;
+use \Ycdev\OsmStaticAero\OpenStreetMap;
+use \Ycdev\OsmStaticAero\LatLng;
+use \Ycdev\OsmStaticAero\Line;
+use \Ycdev\OsmStaticAero\Markers;
 
 \header('Content-type: image/png');
 (new OpenStreetMap(new LatLng(44.351933, 2.568113), 5, 1024, 1024))

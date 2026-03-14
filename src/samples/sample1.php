@@ -8,10 +8,10 @@ require_once '../Markers.php';
 require_once '../OpenStreetMap.php';
 require_once '../XY.php';
 
-use \DantSu\OpenStreetMapStaticAPI\OpenStreetMap;
-use \DantSu\OpenStreetMapStaticAPI\LatLng;
-use \DantSu\OpenStreetMapStaticAPI\Polygon;
-use \DantSu\OpenStreetMapStaticAPI\Markers;
+use \Ycdev\OsmStaticAero\OpenStreetMap;
+use \Ycdev\OsmStaticAero\LatLng;
+use \Ycdev\OsmStaticAero\Polygon;
+use \Ycdev\OsmStaticAero\Markers;
 
 \header('Content-type: image/png');
 OpenStreetMap::createFromBoundingBox(new LatLng(44.352887, 2.565672), new LatLng(44.351172, 2.571092), 10, 600, 400)

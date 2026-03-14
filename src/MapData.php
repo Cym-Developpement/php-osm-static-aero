@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
 
-use DantSu\OpenStreetMapStaticAPI\Utils\GeographicConverter;
+use Ycdev\OsmStaticAero\Utils\GeographicConverter;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\MapData convert latitude and longitude to image pixel position.
+ * Ycdev\OsmStaticAero\MapData convert latitude and longitude to image pixel position.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
