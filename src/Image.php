@@ -1286,7 +1286,8 @@ class Image
         $id    = $this->cacheFileId($url);
         $files = glob($this->cacheDirectory($url) . $id . '*');
         foreach ($files as $file) {
-            $time = str_replace('.png', '', explode('_', basename($file))[1]) ?? '';
+            $parts = explode('_', basename($file));
+            $time = isset($parts[1]) ? str_replace('.png', '', $parts[1]) : '';
             if (filesize($file) === 0) {
                 unlink($file);
                 continue;
