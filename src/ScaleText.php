@@ -5,6 +5,11 @@ namespace Ycdev\OsmStaticAero;
 use Ycdev\OsmStaticAero\Interfaces\Draw;
 use Ycdev\OsmStaticAero\Utils\GeographicConverter;
 
+/**
+ * Ycdev\OsmStaticAero\ScaleText renders a scale bar with distance and ratio on the map.
+ *
+ * @package Ycdev\OsmStaticAero
+ */
 class ScaleText implements Draw
 {
     /**
@@ -24,9 +29,8 @@ class ScaleText implements Draw
      * @param LatLng $center Position of the scale bar
      * @param float $meters Length of the scale bar in meters
      * @param string $color Hex color
-     * @param bool $withOneByText Reserved for future use
      */
-    public function __construct(LatLng $center, float $meters = 5000, $color = '991410', $withOneByText = false)
+    public function __construct(LatLng $center, float $meters = 5000, string $color = '991410')
     {
         $this->center = $center;
         $this->meters = $meters;
