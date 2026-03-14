@@ -857,7 +857,7 @@ class Image
         }
 
         $defaultCurlOptions = [
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/116.0',
+            CURLOPT_USERAGENT      => 'php-osm-static-aero/1.0 (https://github.com/ycdev/php-osm-static-aero)',
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_TIMEOUT        => 5,
         ];
