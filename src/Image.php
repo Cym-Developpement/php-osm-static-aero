@@ -2,6 +2,13 @@
 
 namespace Ycdev\OsmStaticAero;
 
+/**
+ * Ycdev\OsmStaticAero\Image provides GD image manipulation with tile caching.
+ *
+ * @package Ycdev\OsmStaticAero
+ * @author Franck Alary <https://github.com/DantSu>
+ * @see https://github.com/DantSu/php-image-editor Original project
+ */
 class Image
 {
     const ALIGN_LEFT   = 'left';
@@ -1223,15 +1230,17 @@ class Image
 
         $image = \curl_exec($curl);
 
-        if ($cacheData) {
-            $this->saveToCache($url, $image);
-        }
-
         if ($failOnError && \curl_errno($curl)) {
-            throw new \Exception(\curl_error($curl));
+            $error = \curl_error($curl);
+            \curl_close($curl);
+            throw new \Exception($error);
         }
 
         \curl_close($curl);
+
+        if ($cacheData && $image !== false) {
+            $this->saveToCache($url, $image);
+        }
 
         if ($image === false) {
             return $this->resetFields();
