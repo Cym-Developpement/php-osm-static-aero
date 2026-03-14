@@ -255,7 +255,9 @@ class OpenStreetMap
                     ' - ',
                     \array_map(function ($layer) {
                         return $layer->getAttributionText();
-                    }, $this->layers)
+                    }, \array_filter($this->layers, function ($layer) {
+                        return $layer instanceof TileLayer;
+                    }))
                 ),
                 __DIR__ . '/resources/font.ttf',
                 10,
