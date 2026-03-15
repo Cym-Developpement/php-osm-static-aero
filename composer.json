@@ -1,7 +1,7 @@
 {
-  "name": "dantsu/php-osm-static-api",
+  "name": "ycdev/php-osm-static-aero",
   "type": "library",
-  "description": "PHP library to easily get static image from OpenStreetMap (OSM), add markers and draw lines.",
+  "description": "PHP library to generate static aeronautical maps from OpenStreetMap (OSM) with markers, lines and drawings.",
   "keywords": [
     "php",
     "osm",
@@ -9,25 +9,35 @@
     "map",
     "static",
     "image",
-    "maps",
-    "api"
+    "aeronautical",
+    "aviation"
   ],
-  "homepage": "https://github.com/DantSu/php-osm-static-api",
+  "homepage": "https://github.com/ycdev/php-osm-static-aero",
   "license": "MIT",
   "authors": [
     {
       "name": "Franck ALARY",
       "homepage": "https://github.com/DantSu",
-      "role": "Developer"
+      "role": "Original Developer"
     }
   ],
   "require": {
     "php": ">=7.0",
-    "dantsu/php-image-editor": "^1.3"
+    "ext-gd": "*",
+    "ext-curl": "*",
+    "ycdev/paper-size": "^0.1.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6"
   },
   "autoload": {
     "psr-4": {
-      "DantSu\\OpenStreetMapStaticAPI\\": "src/"
+      "Ycdev\\OsmStaticAero\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Ycdev\\OsmStaticAero\\Tests\\": "tests/"
     }
   }
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\XY define X and Y pixel position for map, lines, markers...
+ * Ycdev\OsmStaticAero\XY define X and Y pixel position for map, lines, markers...
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
