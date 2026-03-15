@@ -1,61 +1,38 @@
 
 # TileLayer
 
-DantSu\OpenStreetMapStaticAPI\TileLayer define tile server url and related configuration
+Ycdev\OsmStaticAero\TileLayer define tile server url and related configuration.
 
-
-
-* Full name: `\DantSu\OpenStreetMapStaticAPI\TileLayer`
-
-**See Also:**
-
-* https://github.com/DantSu/php-osm-static-api - Github page of this project
-
-
+* Full name: `\Ycdev\OsmStaticAero\TileLayer`
 
 ## Methods
 
-- *(static)* [defaultTileLayer](#defaulttilelayer) 
-- [__construct](#-__construct) 
-- [setOpacity](#-setopacity) 
-- [setMaxZoom](#-setmaxzoom) 
-- [getMaxZoom](#-getmaxzoom) 
-- [setMinZoom](#-setminzoom) 
-- [getMinZoom](#-getminzoom) 
-- [checkZoom](#-checkzoom) 
-- [getTileUrl](#-gettileurl) 
-- [getAttributionText](#-getattributiontext) 
-- [getTile](#-gettile) 
+- *(static)* [defaultTileLayer](#defaulttilelayer)
+- [__construct](#-__construct)
+- [setOpacity](#-setopacity)
+- [setMaxZoom](#-setmaxzoom)
+- [getMaxZoom](#-getmaxzoom)
+- [setMinZoom](#-setminzoom)
+- [getMinZoom](#-getminzoom)
+- [checkZoom](#-checkzoom)
+- [getTileUrl](#-gettileurl)
+- [getAttributionText](#-getattributiontext)
+- [getTile](#-gettile)
 
 ### ::defaultTileLayer
 
-Default tile server. OpenStreetMaps with related attribution text
-
-
+Default tile server. OpenStreetMaps with related attribution text.
 
 * This method is **static**.
 
-
-
-
-
 #### Return Value:
 
- **\DantSu\OpenStreetMapStaticAPI\TileLayer** : default tile server
-
-
+ **\Ycdev\OsmStaticAero\TileLayer** : default tile server
 
 ---
 ### ->__construct
 
-TileLayer constructor
-
-
-
-
-
-
-
+TileLayer constructor.
 
 #### Parameters:
 
@@ -67,20 +44,10 @@ TileLayer constructor
 | `curlOptions` | **array** | Array of curl options |
 | `failCurlOnError` | **bool** | If true, curl will throw an exception on error. |
 
-
-
-
 ---
 ### ->setOpacity
 
-Set opacity of the layer
-
-
-
-
-
-
-
+Set opacity of the layer.
 
 #### Parameters:
 
@@ -88,24 +55,14 @@ Set opacity of the layer
 |-----------|------|-------------|
 | `opacity` | **float** | Opacity value (0 to 1) |
 
-
 #### Return Value:
 
  **$this** : Fluent interface
 
-
-
 ---
 ### ->setMaxZoom
 
-Set a max zoom value
-
-
-
-
-
-
-
+Set a max zoom value.
 
 #### Parameters:
 
@@ -113,43 +70,23 @@ Set a max zoom value
 |-----------|------|-------------|
 | `maxZoom` | **int** |  |
 
-
 #### Return Value:
 
  **$this** : Fluent interface
 
-
-
 ---
 ### ->getMaxZoom
 
-Get max zoom value
-
-
-
-
-
-
-
-
+Get max zoom value.
 
 #### Return Value:
 
- **int** : 
-
-
+ **int** :
 
 ---
 ### ->setMinZoom
 
-Set a min zoom value
-
-
-
-
-
-
-
+Set a min zoom value.
 
 #### Parameters:
 
@@ -157,43 +94,23 @@ Set a min zoom value
 |-----------|------|-------------|
 | `minZoom` | **int** |  |
 
-
 #### Return Value:
 
  **$this** : Fluent interface
 
-
-
 ---
 ### ->getMinZoom
 
-Get min zoom value
-
-
-
-
-
-
-
-
+Get min zoom value.
 
 #### Return Value:
 
- **int** : 
-
-
+ **int** :
 
 ---
 ### ->checkZoom
 
-Check if zoom value is between min zoom and max zoom
-
-
-
-
-
-
-
+Check if zoom value is between min zoom and max zoom.
 
 #### Parameters:
 
@@ -201,24 +118,14 @@ Check if zoom value is between min zoom and max zoom
 |-----------|------|-------------|
 | `zoom` | **int** | Zoom value to be checked |
 
-
 #### Return Value:
 
- **int** : 
-
-
+ **int** :
 
 ---
 ### ->getTileUrl
 
-Get tile url for coordinates and zoom level
-
-
-
-
-
-
-
+Get tile url for coordinates and zoom level.
 
 #### Parameters:
 
@@ -228,43 +135,23 @@ Get tile url for coordinates and zoom level
 | `y` | **int** | y coordinate |
 | `z` | **int** | zoom level |
 
-
 #### Return Value:
 
  **string** : tile url
 
-
-
 ---
 ### ->getAttributionText
 
-Get attribution text
-
-
-
-
-
-
-
-
+Get attribution text.
 
 #### Return Value:
 
  **string** : Attribution text
 
-
-
 ---
 ### ->getTile
 
-Get an image tile
-
-
-
-
-
-
-
+Get an image tile.
 
 #### Parameters:
 
@@ -275,15 +162,8 @@ Get an image tile
 | `z` | **int** |  |
 | `tileSize` | **int** |  |
 
-
 #### Return Value:
 
- **\DantSu\PHPImageEditor\Image** : Image instance containing the tile
-
-
+ **\Ycdev\OsmStaticAero\Image** : Image instance containing the tile
 
 ---
-
-
----
-> Automatically generated from source code comments on 2023-07-30 using [phpDocumentor](http://www.phpdoc.org/)

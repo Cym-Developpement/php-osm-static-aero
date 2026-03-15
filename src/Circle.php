@@ -1,17 +1,17 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
 
-use DantSu\OpenStreetMapStaticAPI\Interfaces\Draw;
-use DantSu\OpenStreetMapStaticAPI\Utils\GeographicConverter;
-use DantSu\PHPImageEditor\Geometry2D;
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Interfaces\Draw;
+use Ycdev\OsmStaticAero\Utils\GeographicConverter;
+use Ycdev\OsmStaticAero\Geometry2D;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\Circle draw circle on the map.
+ * Ycdev\OsmStaticAero\Circle draw circle on the map.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
@@ -39,6 +39,10 @@ class Circle implements Draw
      * @var LatLng
      */
     private $edge = null;
+    /**
+     * @var bool
+     */
+    private $aeroZoneStyle = false;
 
     /**
      * Circle constructor.
@@ -48,13 +52,14 @@ class Circle implements Draw
      * @param int $strokeWeight pixel weight of the line
      * @param string $fillColor Hexadecimal string color
      */
-    public function __construct(LatLng $center, string $strokeColor, int $strokeWeight, string $fillColor)
+    public function __construct(LatLng $center, string $strokeColor, int $strokeWeight, string $fillColor, bool $aeroZoneStyle = false)
     {
         $this->center = $center;
         $this->edge = $center;
         $this->strokeColor = \str_replace('#', '', $strokeColor);
         $this->strokeWeight = $strokeWeight > 0 ? $strokeWeight : 0;
         $this->fillColor = \str_replace('#', '', $fillColor);
+        $this->aeroZoneStyle = $aeroZoneStyle;
     }
 
     /**
@@ -84,9 +89,7 @@ class Circle implements Draw
     /**
      * Draw the circle on the map image.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     *
-     * @param Image $image The map image (An instance of DantSu\PHPImageEditor\Image)
+     * @param Image $image The map image
      * @param MapData $mapData Bounding box of the map
      * @return $this Fluent interface
      */
@@ -104,7 +107,12 @@ class Circle implements Draw
             $dImage->drawCircle($center->getX(), $center->getY(), $length * 2, $this->strokeColor);
         }
 
-        $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+        if ($this->aeroZoneStyle) {
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - ($this->strokeWeight * 5)) * 2, 'ffffffff');
+        } else {
+            $dImage->drawCircle($center->getX(), $center->getY(), ($length - $this->strokeWeight) * 2, $this->fillColor);
+        }
 
         $image->pasteOn($dImage, 0, 0);
         return $this;

@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\OpenStreetMapStaticAPI\Interfaces\Draw;
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Interfaces\Draw;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\OpenStreetMap is a PHP library created for easily get static image from OpenStreetMap with markers, lines, polygons and circles.
+ * Ycdev\OsmStaticAero\OpenStreetMap is a PHP library created for easily get static image from OpenStreetMap with markers, lines, polygons and circles.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
@@ -63,6 +63,10 @@ class OpenStreetMap
      */
     protected $markers = [];
     /**
+     * @var bool Display attribution text
+     */
+    protected $displayAttributionText = true;
+    /**
      * @var Draw[] Array of Line instances
      */
     protected $draws = [];
@@ -73,16 +77,25 @@ class OpenStreetMap
      * @param int $zoom Zoom
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param TileLayer|bool|null $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server. Pass false to disable tiles.
      * @param int $tileSize Tile size in pixels
+     * @param float $factor Scale factor for high resolution
+     * @param bool $displayAttributionText Whether to display attribution text
      */
-    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256)
+    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, $tileLayer = null, int $tileSize = 256, float $factor = 1.0, bool $displayAttributionText = true)
     {
+        $this->displayAttributionText = $displayAttributionText;
+
         if ($tileLayer === null) {
             $tileLayer = TileLayer::defaultTileLayer();
         }
 
-        $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize);
+        if ($tileLayer === false) {
+            $this->mapData = new MapData($centerMap, $zoom, new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        } else {
+            $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        }
+
         $this->layers = [$tileLayer];
     }
 
@@ -178,15 +191,15 @@ class OpenStreetMap
     {
         $outputSize = $this->mapData->getOutputSize();
         $tileSize = $this->mapData->getTileSize();
+        $factor = $this->mapData->getFactor();
         $boundingBox = MapData::getBoundingBoxFromPoints($points);
         $latLngZoom = MapData::getCenterAndZoomFromBoundingBox($boundingBox[0], $boundingBox[1], $padding, $outputSize->getX(), $outputSize->getY(), $tileSize);
-        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize);
+        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize, $factor);
         return $this;
     }
 
     /**
      * Get data about the generated map (bounding box, size, OSM tile ids...)
-     * @see https://github.com/DantSu/php-osm-static-api/blob/master/docs/classes/DantSu/OpenStreetMapStaticAPI/MapData.md See more about MapData
      * @return MapData data about the generated map (bounding box, size, OSM tile ids...)
      */
     public function getMapData(): MapData
@@ -196,8 +209,7 @@ class OpenStreetMap
 
     /**
      * Get only the map image.
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     protected function getMapImage(): Image
     {
@@ -209,6 +221,9 @@ class OpenStreetMap
         $tileSize = $this->mapData->getTileSize();
 
         foreach ($this->layers as $tileLayer) {
+            if ($tileLayer === false) {
+                continue;
+            }
             $yTile = $this->mapData->getTileTopLeft()->getY();
             for ($y = $startY; $y < $imgSize->getY(); $y += $tileSize) {
                 $xTile = $this->mapData->getTileTopLeft()->getX();
@@ -240,7 +255,9 @@ class OpenStreetMap
                     ' - ',
                     \array_map(function ($layer) {
                         return $layer->getAttributionText();
-                    }, $this->layers)
+                    }, \array_filter($this->layers, function ($layer) {
+                        return $layer instanceof TileLayer;
+                    }))
                 ),
                 __DIR__ . '/resources/font.ttf',
                 10,
@@ -263,8 +280,7 @@ class OpenStreetMap
     /**
      * Get the map image with markers and lines.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     public function getImage(): Image
     {
@@ -278,6 +294,10 @@ class OpenStreetMap
             $markers->draw($image, $this->mapData);
         }
 
-        return $this->drawAttribution($image);
+        if ($this->layers[0] !== false && $this->displayAttributionText) {
+            return $this->drawAttribution($image);
+        }
+
+        return $image;
     }
 }

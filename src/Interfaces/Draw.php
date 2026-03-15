@@ -1,10 +1,10 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI\Interfaces;
+namespace Ycdev\OsmStaticAero\Interfaces;
 
 
-use DantSu\OpenStreetMapStaticAPI\MapData;
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\MapData;
+use Ycdev\OsmStaticAero\Image;
 
 interface Draw
 {

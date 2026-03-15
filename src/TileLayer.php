@@ -1,19 +1,23 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\TileLayer define tile server url and related configuration
+ * Ycdev\OsmStaticAero\TileLayer define tile server url and related configuration
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Stephan Strate <hello@stephan.codes>
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
  */
 class TileLayer
 {
+    const DEFAULT = ['default', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', '© OpenStreetMap contributors'];
+    const OPENAIP = ['openaip', 'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=b85c3693887f9070b9603162d49d9cd2', '© OpenAIP contributors'];
+    const OSMFR = ['openstreetmapfr', 'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', '© OpenStreetMap contributors'];
+    const OPENTOPO = ['opentopomap', 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'Kartendaten: © OpenStreetMap-Mitwirkende, SRTM | Kartendarstellung: © OpenTopoMap (CC-BY-SA)'];
 
     /**
      * Default tile server. OpenStreetMaps with related attribution text
