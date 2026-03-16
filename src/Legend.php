@@ -183,6 +183,11 @@ class Legend implements Draw
         foreach ($lines as $line) {
             $trimmed = \ltrim($line);
             $fontSize = $this->fontSize;
+            $centered = false;
+            if (\strpos($trimmed, '>>') === 0) {
+                $trimmed = \ltrim(\substr($trimmed, 2));
+                $centered = true;
+            }
             if (\strpos($trimmed, '##') === 0) {
                 $lineText = \trim(\substr($trimmed, 2));
                 $fontSize = \intval($this->fontSize * 1.5);
@@ -190,7 +195,7 @@ class Legend implements Draw
                 $lineText = \trim(\substr($trimmed, 1));
                 $fontSize = \intval($this->fontSize * 2);
             } else {
-                $lineText = $line;
+                $lineText = $trimmed;
             }
             $bbox = $this->calculateTextBoundingBox($lineText, $fontPath, $fontSize, $this->fontColor, 0, 0);
             $lineWidth = \abs($bbox['bottom-right']['x'] - $bbox['top-left']['x']);
@@ -200,6 +205,7 @@ class Legend implements Draw
                 'fontSize' => $fontSize,
                 'width' => $lineWidth,
                 'height' => $lineHeight,
+                'centered' => $centered,
             ];
             if ($lineWidth > $maxTextWidth) {
                 $maxTextWidth = $lineWidth;
@@ -290,17 +296,31 @@ class Legend implements Draw
         }
 
         $textX = $left + $this->padding;
+        $centerX = $left + $this->padding + ($maxContentWidth / 2);
         foreach ($lineMetrics as $info) {
-            $image->writeText(
-                $info['text'],
-                $fontPath,
-                $info['fontSize'],
-                $this->fontColor,
-                $textX,
-                $currentY + $info['height'] / 2,
-                Image::ALIGN_LEFT,
-                Image::ALIGN_MIDDLE
-            );
+            if (!empty($info['centered'])) {
+                $image->writeText(
+                    $info['text'],
+                    $fontPath,
+                    $info['fontSize'],
+                    $this->fontColor,
+                    $centerX,
+                    $currentY + $info['height'] / 2,
+                    Image::ALIGN_CENTER,
+                    Image::ALIGN_MIDDLE
+                );
+            } else {
+                $image->writeText(
+                    $info['text'],
+                    $fontPath,
+                    $info['fontSize'],
+                    $this->fontColor,
+                    $textX,
+                    $currentY + $info['height'] / 2,
+                    Image::ALIGN_LEFT,
+                    Image::ALIGN_MIDDLE
+                );
+            }
             $currentY += $info['height'];
         }
 
