@@ -62,7 +62,7 @@ class Legend implements Draw
      * @param string|null $logoPath Path to logo image
      * @param string|null $title Legend title
      */
-    public function __construct($position, string $text, int $fontSize = 30, string $fontColor = '000000', string $backgroundColor = 'ffffff', int $padding = 10, string $logoPath = null, string $title = null)
+    public function __construct($position, string $text, int $fontSize = 30, string $fontColor = '000000', string $backgroundColor = 'ffffff', int $padding = 10, ?string $logoPath = null, ?string $title = null)
     {
         $this->text = $text;
         $this->fontSize = $fontSize;
@@ -267,8 +267,10 @@ class Legend implements Draw
             $bottom += $offset;
         }
 
-        // Draw background
-        $image->drawRectangle($left, $top, $right, $bottom, '#ffffff19');
+        // Draw background. Bounds are rounded : drawRectangle expects ints, and
+        // a half pixel would emit a PHP deprecation in the middle of the image
+        // stream.
+        $image->drawRectangle((int) \round($left), (int) \round($top), (int) \round($right), (int) \round($bottom), '#ffffff19');
 
         // Render content
         $currentY = $top + $this->padding;

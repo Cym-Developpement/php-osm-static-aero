@@ -54,11 +54,8 @@ class Compass implements Draw
 
         $dImage = Image::newCanvas($image->getWidth(), $image->getHeight());
 
-        $dImage->drawCircle($center->getX(), $center->getY(), $size * 2, $this->fontColor);
-        $dImage->drawCircle($center->getX(), $center->getY(), ($size - ($this->strokeWeight * 3)) * 2, 'ffffffff');
-
-        $dImage->drawCircle($center->getX(), $center->getY(), ($size / 30) * 2, $this->fontColor);
-        $dImage->drawCircle($center->getX(), $center->getY(), (($size / 30) - ($this->strokeWeight * 3)) * 2, 'ffffffff');
+        $this->drawRing($dImage, $center->getX(), $center->getY(), $size, $this->strokeWeight * 3);
+        $this->drawRing($dImage, $center->getX(), $center->getY(), $size / 30, $this->strokeWeight * 3);
 
         $centerCompassSize = \intval($size / 30);
         $dImage->drawLineWithAngle($center->getX(), $center->getY(), 0, $centerCompassSize, ($this->strokeWeight * 3), $this->fontColor);
@@ -87,6 +84,33 @@ class Compass implements Draw
 
         $image->pasteOn($dImage, 0, 0);
         return $this;
+    }
+
+    /**
+     * Draw a ring : a filled disc whose middle is erased back to transparent.
+     *
+     * The erasing circle is skipped when the ring is thicker than the radius —
+     * which happens on a small compass, where GD would be handed a negative
+     * diameter and throw. The ring then degrades to a solid dot.
+     *
+     * @param Image $dImage Layer being drawn on
+     * @param int $x Horizontal center in pixels
+     * @param int $y Vertical center in pixels
+     * @param float $radius Outer radius in pixels
+     * @param float $thickness Ring thickness in pixels
+     */
+    private function drawRing(Image $dImage, int $x, int $y, float $radius, float $thickness): void
+    {
+        if ($radius <= 0) {
+            return;
+        }
+
+        $dImage->drawCircle($x, $y, (int) \round($radius * 2), $this->fontColor);
+
+        $innerRadius = $radius - $thickness;
+        if ($innerRadius > 0) {
+            $dImage->drawCircle($x, $y, (int) \round($innerRadius * 2), 'ffffffff');
+        }
     }
 
     /**

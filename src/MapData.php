@@ -126,16 +126,23 @@ class MapData
         $pxZoneWidth = ($rightTilePos['id'] - $leftTilePos['id']) * $tileSize + $rightTilePos['position'] - $leftTilePos['position'];
         $pxZoneHeight = ($bottomTilePos['id'] - $topTilePos['id']) * $tileSize + $bottomTilePos['position'] - $topTilePos['position'];
 
+        // Une zone plate sur un axe (points alignés, ou point unique comme la
+        // bounding box d'un Text ou d'une Legend) n'impose aucune contrainte
+        // sur cet axe : on l'écarte du calcul plutôt que de diviser par zéro.
+        $ratios = [1];
+        if ($pxZoneHeight > 0) {
+            $ratios[] = ($imageHeight - $padding) / $pxZoneHeight;
+        }
+        if ($pxZoneWidth > 0) {
+            $ratios[] = ($imageWidth - $padding) / $pxZoneWidth;
+        }
+
         return [
             'center' => GeographicConverter::getCenter($topLeft, $bottomRight),
             'zoom' => \intval(
                 \floor(
                     \log(
-                        \min(
-                            1,
-                            ($imageHeight - $padding) / $pxZoneHeight,
-                            ($imageWidth - $padding) / $pxZoneWidth
-                        ) * \pow(2, $zoom)
+                        \min($ratios) * \pow(2, $zoom)
                     ) / 0.69314
                 )
             )

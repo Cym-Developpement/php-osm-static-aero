@@ -21,10 +21,10 @@ class OpenStreetMap
      * @param int $zoom Zoom
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param ?TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
      * @param int $tileSize Tile size in pixels
      */
-    public static function createFromLatLngZoom(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
+    public static function createFromLatLngZoom(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, ?TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
     {
         return new OpenStreetMap($centerMap, $zoom, $imageWidth, $imageHeight, $tileLayer, $tileSize);
     }
@@ -36,11 +36,11 @@ class OpenStreetMap
      * @param int $padding Padding to add before top left and after bottom right position.
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param ?TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
      * @param int $tileSize Tile size in pixels
      * @return OpenStreetMap
      */
-    public static function createFromBoundingBox(LatLng $topLeft, LatLng $bottomRight, int $padding, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
+    public static function createFromBoundingBox(LatLng $topLeft, LatLng $bottomRight, int $padding, int $imageWidth, int $imageHeight, ?TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
     {
         if ($tileLayer === null) {
             $tileLayer = TileLayer::defaultTileLayer();
@@ -189,12 +189,26 @@ class OpenStreetMap
      */
     public function fitToPoints(array $points, int $padding = 0)
     {
+        // Rien à cadrer : les seules formes ajoutées sont ancrées en pixels
+        // (une Legend alignée renvoie une bounding box vide).
+        // getBoundingBoxFromPoints donnerait des coins aberrants à ±360°.
+        if (\count($points) === 0) {
+            return $this;
+        }
+
         $outputSize = $this->mapData->getOutputSize();
         $tileSize = $this->mapData->getTileSize();
         $factor = $this->mapData->getFactor();
         $boundingBox = MapData::getBoundingBoxFromPoints($points);
         $latLngZoom = MapData::getCenterAndZoomFromBoundingBox($boundingBox[0], $boundingBox[1], $padding, $outputSize->getX(), $outputSize->getY(), $tileSize);
-        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize, $factor);
+
+        // Sans couche de tuiles il n'y a pas de serveur contre lequel borner le
+        // zoom, et layers[0] vaut false : l'appeler serait fatal.
+        $zoom = $this->layers[0] === false
+            ? $latLngZoom['zoom']
+            : $this->layers[0]->checkZoom($latLngZoom['zoom']);
+
+        $this->mapData = new MapData($latLngZoom['center'], $zoom, $outputSize, $tileSize, $factor);
         return $this;
     }
 

@@ -248,9 +248,9 @@ class Image
      */
     public function destroy(): Image
     {
-        if ($this->isImageDefined()) {
-            \imagedestroy($this->image);
-        }
+        // Depuis PHP 8.0 une GdImage est un objet libéré par le compteur de
+        // références : imagedestroy() n'a plus d'effet, et est déprécié en 8.5.
+        // Remettre les champs à zéro suffit à relâcher la ressource.
         $this->resetFields();
         return $this;
     }
@@ -431,7 +431,6 @@ class Image
             return $this;
         }
 
-        \imagedestroy($this->image);
         $this->image = $rotated;
         $this->width = \imagesx($this->image);
         $this->height = \imagesy($this->image);
@@ -465,7 +464,6 @@ class Image
 
         \imagecopyresampled($newImage, $this->image, 0, 0, 0, 0, $width, $height, $this->width, $this->height);
 
-        \imagedestroy($this->image);
         $this->image = $newImage;
         $this->width = $width;
         $this->height = $height;
@@ -530,7 +528,6 @@ class Image
 
         \imagecopyresampled($newImage, $this->image, 0, 0, $posX, $posY, $width, $height, $width, $height);
 
-        \imagedestroy($this->image);
         $this->image = $newImage;
         $this->width = $width;
         $this->height = $height;
@@ -906,7 +903,6 @@ class Image
             ) {
                 return [];
             }
-            \imagedestroy($newImg);
 
             $xMin = 0;
             $xMax = 0;
