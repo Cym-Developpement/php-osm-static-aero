@@ -14,6 +14,8 @@ This project uses the [Tile Server](https://wiki.openstreetmap.org/wiki/Tile_ser
 - Extension `gd`
 - Extension `curl`
 
+Optional, for `VacChart::toPng()` only: **Ghostscript**, or ImageMagick as a fallback. Everything else works without them.
+
 ## Installation
 
 ```cmd
@@ -146,11 +148,22 @@ The `legend`, `legendBackground`, `legendLogo` and `legendTitle` keys are accept
 
 ### Compass rose — `Compass`
 
+Draws a graduated dial centred on a coordinate, to read bearings straight off the printed chart.
+
 ```php
 $map->addDraw(new Compass($center, 10000, 15, '00000080'));
 ```
 
-`new Compass(LatLng $center, float $size, int $fontSize = 30, string $fontColor = '000000')` — `$size` is the dial radius in **meters**, so the rose scales with the terrain rather than with the zoom. Graduations are drawn every degree, with a longer, labelled mark every ten.
+| Parameter | Default | Description |
+|---|---|---|
+| `$center` | — | `LatLng` of the dial centre |
+| `$size` | — | Dial radius, in **meters** |
+| `$fontSize` | `30` | Size of the degree labels, in pixels |
+| `$fontColor` | `'000000'` | Hex color, `RRGGBBAA` accepted |
+
+`$size` being expressed in meters, the rose scales with the terrain rather than with the zoom: the same call yields a dial of the same ground radius at any zoom or paper format. Graduations are drawn every degree, longer every five, and every tenth one carries its value, rotated to stay readable.
+
+> Bearings are **true**, not magnetic. Runway designators quoted elsewhere on an aeronautical chart are magnetic, so state the convention on the sheet if the difference matters at your latitude.
 
 ### Legend block — `Legend`
 
@@ -158,7 +171,20 @@ $map->addDraw(new Compass($center, 10000, 15, '00000080'));
 $map->addDraw(new Legend(Legend::ALIGN_RIGHT, $text, 25, '000000', 'ffffff', 32, $logoPath, 'Thouars LFCT'));
 ```
 
-The first argument is either a `LatLng` — the legend is then anchored on the ground — or one of `Legend::ALIGN_LEFT`, `ALIGN_RIGHT`, `ALIGN_TOP`, `ALIGN_BOTTOM` to pin it to an edge of the image.
+| Parameter | Default | Description |
+|---|---|---|
+| `$position` | — | `LatLng`, or one of `ALIGN_LEFT`, `ALIGN_RIGHT`, `ALIGN_TOP`, `ALIGN_BOTTOM` |
+| `$text` | — | Block content, one line per `\n` |
+| `$fontSize` | `30` | Base size in pixels; headings are multiples of it |
+| `$fontColor` | `'000000'` | Hex color |
+| `$backgroundColor` | `'ffffff'` | Currently unread — the panel is drawn `#ffffff19` |
+| `$padding` | `10` | Inner margin, in pixels |
+| `$logoPath` | `null` | Image drawn above the title, centred, scaled down if wider than the block |
+| `$title` | `null` | Heading line, twice the base size — **three times** when there is no logo |
+
+Given a `LatLng` the legend is anchored on the ground and travels with the map; given an alignment it is pinned to an edge of the image and clamped so it never overflows.
+
+The block width is set by its longest line, so a single long line widens everything.
 
 The text supports a few line prefixes:
 
@@ -170,6 +196,69 @@ The text supports a few line prefixes:
 
 Prefixes combine, `>>` first: `>> ## Sub-heading, centered`.
 
+#### Chart under the legend — `setVacImage()`
+
+```php
+$legend->setVacImage($pngPath, 60);
+```
+
+Adds an image below the block, scaled to the exact content width. It forms a **separate panel** on fully opaque white — the legend panel is deliberately translucent, but a chart printed over terrain would be unreadable — held apart by `$marginTop` pixels.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `$path` | — | Image path, `null` or `''` to draw nothing |
+| `$marginTop` | `60` | Vertical gap between the legend and the panel, in pixels |
+
+Intended for a VAC chart page produced by [`VacChart`](#vac-charts--vacchart), but any image works. Vertical clamping accounts for the panel, so it cannot slide off the sheet.
+
+Render the source above the target width and let it shrink: an image enlarged to fit will look soft. At 300 dpi an A5 chart under a 2100 px block is about 365 dpi, so rendering at 400 dpi and reducing gives a crisp result.
+
+### VAC charts — `VacChart`
+
+Fetches official French visual approach charts from the SIA eAIP, which publishes them freely, and rasterises a page for use under a `Legend`.
+
+```php
+use \Ycdev\OsmStaticAero\VacChart;
+
+$vac = new VacChart(['cacheDirectory' => '/var/www/storage/vac']);
+
+$png = $vac->toPng('LFCT', 1, 400);
+
+if ($png === null) {
+    echo $vac->getLastError();
+}
+```
+
+| Method | Description |
+|---|---|
+| `download(string $icao, ?string $destination = null)` | Path to the cached PDF, `null` on failure |
+| `getPdf(string $icao)` | The PDF bytes |
+| `toPng(string $icao, int $page = 1, int $dpi = 300, ?string $destination = null)` | Path to a rendered page |
+| `pageCount(string $icao)` | Number of pages |
+| `downloadAll(string[] $icaos)` | `ICAO => path\|null` |
+| `getCycle()` / `setCycle(string)` | Current AIRAC cycle, discovered or forced |
+| `airacDates(int $count = 4)` / `cycleName(\DateTimeImmutable)` | The underlying date arithmetic |
+| `purgeOldCycles()` | Deletes charts from every cycle but the current one |
+| `getLastError()` | Reason for the last failure |
+
+| Property | Default | Description |
+|---|---|---|
+| `$cacheDirectory` | `'.vac_cache'` | One sub-directory per AIRAC cycle |
+| `$logFile` | `'vac-errors.log'` | Failures, also written to STDERR under CLI |
+| `$timeout` | `30` | cURL timeout in seconds; a chart can reach 1 MB |
+| `$maxAttempts` | `3` | Attempts before giving up |
+| `$probedCycles` | `4` | How far back to look for the online cycle |
+
+Properties are settable through the constructor array, or directly.
+
+**The AIRAC cycle is never hardcoded.** Charts move to a new directory every 28 days and old ones are purged from the server, so the dates are computed from a known epoch and probed backwards until one answers. The lookup happens once per run and is then memoised. Because the cache is partitioned by cycle, a new cycle cannot serve a stale chart — and `purgeOldCycles()` removes the previous ones, since an out-of-date approach chart left lying around is one that eventually gets printed.
+
+Responses are checked for the `%PDF` signature before caching: an HTML error page served with HTTP 200 must not end up on disk under a `.pdf` name. A 404 is not retried — an aerodrome with no published chart will not grow one on the third attempt.
+
+`toPng()` renders through **Ghostscript**, falling back to ImageMagick. Ghostscript is preferred: it is the engine ImageMagick would call anyway, it extracts the requested page without rendering the others, and it sidesteps the `policy.xml` rules that often forbid PDF under ImageMagick. Without either binary, `download()` still works and `toPng()` returns `null` with an explicit message.
+
+> Charts are valid for one AIRAC cycle. Print the cycle alongside them, and prefer failing loudly over serving an expired one.
+
 ### Text label — `Text`
 
 `new Text(LatLng $center, string $text, int $fontSize = 30, string $fontColor = '000000')` writes a label anchored on the ground, doubled in white underneath for legibility.
@@ -179,10 +268,13 @@ Prefixes combine, `>>` first: `>> ## Sub-heading, centered`.
 The constructor takes a fifth argument:
 
 ```php
-new Circle($center, '3e43ff1a', 4, '3e43ff99', true);
+(new Circle($center, '3e43ff1a', 4, '3e43ff99', true))
+    ->setRadius($map->dist('30Km'));
 ```
 
 With `$aeroZoneStyle = true` only a thick ring of fill color is kept along the edge, leaving the middle transparent — the usual way of drawing an airspace boundary without hiding the chart underneath.
+
+The radius is set afterwards, either in meters with `setRadius(float)` — `PaperMap::dist('30Km')` parses the usual notations — or by giving a point on the circumference with `setEdgePoint(LatLng)`.
 
 ### Rectangles — `Polygon`
 
@@ -193,6 +285,8 @@ With `$aeroZoneStyle = true` only a thick ring of fill color is kept along the e
 Ready-to-use `[name, url, attribution]` triplets: `TileLayer::DEFAULT`, `TileLayer::OSMFR`, `TileLayer::OPENTOPO` and `TileLayer::OPENAIP` (aeronautical overlay).
 
 > `TileLayer::OPENAIP` embeds a shared API key so the examples run out of the box. Replace it with your own before any real use — see the [OpenAIP guide](./docs/openaip.md), which also covers rate limiting, retries and a known rendering defect at low zoom.
+
+Building a layer yourself gives access to `setOpacity(float)` — handy to tone down an overlay — and to `setMinZoom(int)` / `setMaxZoom(int)`, which clamp the requested zoom to what the server actually serves. See [TileLayer](./docs/classes/Ycdev/OsmStaticAero/TileLayer.md) for the full surface, including the `{s}` subdomain placeholder.
 
 ### Maps without tiles
 
@@ -214,6 +308,45 @@ The cache root is the static `Image::$cacheDirectory`, `.tiles_cache` by default
 Image::$cacheDirectory = '/var/www/storage/tiles-cache';
 Image::$tileLogFile    = '/var/www/storage/logs/tiles-errors.log';
 ```
+
+Only successful responses are cached. A body that is not a PNG, JPEG, GIF or WEBP never reaches the disk — an HTML error page stored under a `.png` name would be served back as a tile until it expired.
+
+### Missing tiles — retries and log
+
+A tile that fails to download used to leave a silent transparent hole: `data()` fails, `resetFields()` empties the object, and `pasteOn()` returns early. Nothing was reported, and an A0 sheet issues over a thousand tile requests.
+
+`Image::curl()` now diagnoses each response — cURL error, HTTP status, empty body, non-image content — and retries the failures worth retrying: cURL errors, `429` and `5xx`, plus a `200` whose body is not an image. A `204`, `401`, `403` or `404` fails at once; the server answered clearly.
+
+| Static property | Default | Description |
+|---|---|---|
+| `$tileMaxAttempts` | `3` | Attempts per tile, waiting 500 ms then 1 s |
+| `$tileTimeout` | `15` | cURL timeout per tile, in seconds |
+| `$tileLogFile` | `'tiles-errors.log'` | Failure log; also STDERR under CLI |
+| `$tileFailureCount` | `0` | Failures since the script started |
+
+Read the counter after rendering rather than trusting the image:
+
+```php
+if (Image::$tileFailureCount > 0) {
+    // incomplete map — see Image::$tileLogFile
+}
+```
+
+Each line carries the host, the `z/x/y` reference, the reason, the size and the duration. **The API key is masked** before writing.
+
+```
+[2026-08-09 03:54] api.tiles.openaip.net  z=12 x=2027 y=1400  HTTP 404  92 o  0.13s  …apiKey=***
+```
+
+### Locating a hole — `OpenStreetMap::$debugTiles`
+
+```php
+OpenStreetMap::$debugTiles = true;
+```
+
+Frames every tile in black and writes its `z/x/y` reference in the corner, in the same format as the log, so a gap on the sheet maps to a line in the file. The frame is drawn **after** the paste and unconditionally: a tile that failed still shows its reference, over the void it left.
+
+Set it before building the map. Rendering is otherwise unchanged.
 
 ## Documentation
 
