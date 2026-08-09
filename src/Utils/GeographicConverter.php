@@ -1,9 +1,9 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI\Utils;
+namespace Ycdev\OsmStaticAero\Utils;
 
 
-use DantSu\OpenStreetMapStaticAPI\LatLng;
+use Ycdev\OsmStaticAero\LatLng;
 
 class GeographicConverter
 {

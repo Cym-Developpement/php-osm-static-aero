@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\OpenStreetMapStaticAPI\Interfaces\Draw;
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Interfaces\Draw;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\OpenStreetMap is a PHP library created for easily get static image from OpenStreetMap with markers, lines, polygons and circles.
+ * Ycdev\OsmStaticAero\OpenStreetMap is a PHP library created for easily get static image from OpenStreetMap with markers, lines, polygons and circles.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
@@ -21,10 +21,10 @@ class OpenStreetMap
      * @param int $zoom Zoom
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param ?TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
      * @param int $tileSize Tile size in pixels
      */
-    public static function createFromLatLngZoom(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
+    public static function createFromLatLngZoom(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, ?TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
     {
         return new OpenStreetMap($centerMap, $zoom, $imageWidth, $imageHeight, $tileLayer, $tileSize);
     }
@@ -36,11 +36,11 @@ class OpenStreetMap
      * @param int $padding Padding to add before top left and after bottom right position.
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param ?TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
      * @param int $tileSize Tile size in pixels
      * @return OpenStreetMap
      */
-    public static function createFromBoundingBox(LatLng $topLeft, LatLng $bottomRight, int $padding, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
+    public static function createFromBoundingBox(LatLng $topLeft, LatLng $bottomRight, int $padding, int $imageWidth, int $imageHeight, ?TileLayer $tileLayer = null, int $tileSize = 256): OpenStreetMap
     {
         if ($tileLayer === null) {
             $tileLayer = TileLayer::defaultTileLayer();
@@ -49,6 +49,11 @@ class OpenStreetMap
         $latLngZoom = MapData::getCenterAndZoomFromBoundingBox($topLeft, $bottomRight, $padding, $imageWidth, $imageHeight, $tileSize);
         return new OpenStreetMap($latLngZoom['center'], $latLngZoom['zoom'], $imageWidth, $imageHeight, $tileLayer, $tileSize);
     }
+
+    /**
+     * @var bool Mode debug : encadre chaque tuile et y inscrit sa reference z/x/y
+     */
+    public static $debugTiles = false;
 
     /**
      * @var MapData Data about the generated map (bounding box, size, OSM tile ids...)
@@ -63,6 +68,10 @@ class OpenStreetMap
      */
     protected $markers = [];
     /**
+     * @var bool Display attribution text
+     */
+    protected $displayAttributionText = true;
+    /**
      * @var Draw[] Array of Line instances
      */
     protected $draws = [];
@@ -73,16 +82,25 @@ class OpenStreetMap
      * @param int $zoom Zoom
      * @param int $imageWidth Width of the generated map image
      * @param int $imageHeight Height of the generated map image
-     * @param TileLayer $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server
+     * @param TileLayer|bool|null $tileLayer Tile server configuration, defaults to OpenStreetMaps tile server. Pass false to disable tiles.
      * @param int $tileSize Tile size in pixels
+     * @param float $factor Scale factor for high resolution
+     * @param bool $displayAttributionText Whether to display attribution text
      */
-    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, TileLayer $tileLayer = null, int $tileSize = 256)
+    public function __construct(LatLng $centerMap, int $zoom, int $imageWidth, int $imageHeight, $tileLayer = null, int $tileSize = 256, float $factor = 1.0, bool $displayAttributionText = true)
     {
+        $this->displayAttributionText = $displayAttributionText;
+
         if ($tileLayer === null) {
             $tileLayer = TileLayer::defaultTileLayer();
         }
 
-        $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize);
+        if ($tileLayer === false) {
+            $this->mapData = new MapData($centerMap, $zoom, new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        } else {
+            $this->mapData = new MapData($centerMap, $tileLayer->checkZoom($zoom), new XY($imageWidth, $imageHeight), $tileSize, $factor);
+        }
+
         $this->layers = [$tileLayer];
     }
 
@@ -176,17 +194,31 @@ class OpenStreetMap
      */
     public function fitToPoints(array $points, int $padding = 0)
     {
+        // Rien à cadrer : les seules formes ajoutées sont ancrées en pixels
+        // (une Legend alignée renvoie une bounding box vide).
+        // getBoundingBoxFromPoints donnerait des coins aberrants à ±360°.
+        if (\count($points) === 0) {
+            return $this;
+        }
+
         $outputSize = $this->mapData->getOutputSize();
         $tileSize = $this->mapData->getTileSize();
+        $factor = $this->mapData->getFactor();
         $boundingBox = MapData::getBoundingBoxFromPoints($points);
         $latLngZoom = MapData::getCenterAndZoomFromBoundingBox($boundingBox[0], $boundingBox[1], $padding, $outputSize->getX(), $outputSize->getY(), $tileSize);
-        $this->mapData = new MapData($latLngZoom['center'], $this->layers[0]->checkZoom($latLngZoom['zoom']), $outputSize, $tileSize);
+
+        // Sans couche de tuiles il n'y a pas de serveur contre lequel borner le
+        // zoom, et layers[0] vaut false : l'appeler serait fatal.
+        $zoom = $this->layers[0] === false
+            ? $latLngZoom['zoom']
+            : $this->layers[0]->checkZoom($latLngZoom['zoom']);
+
+        $this->mapData = new MapData($latLngZoom['center'], $zoom, $outputSize, $tileSize, $factor);
         return $this;
     }
 
     /**
      * Get data about the generated map (bounding box, size, OSM tile ids...)
-     * @see https://github.com/DantSu/php-osm-static-api/blob/master/docs/classes/DantSu/OpenStreetMapStaticAPI/MapData.md See more about MapData
      * @return MapData data about the generated map (bounding box, size, OSM tile ids...)
      */
     public function getMapData(): MapData
@@ -196,8 +228,7 @@ class OpenStreetMap
 
     /**
      * Get only the map image.
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     protected function getMapImage(): Image
     {
@@ -209,6 +240,9 @@ class OpenStreetMap
         $tileSize = $this->mapData->getTileSize();
 
         foreach ($this->layers as $tileLayer) {
+            if ($tileLayer === false) {
+                continue;
+            }
             $yTile = $this->mapData->getTileTopLeft()->getY();
             for ($y = $startY; $y < $imgSize->getY(); $y += $tileSize) {
                 $xTile = $this->mapData->getTileTopLeft()->getX();
@@ -218,12 +252,47 @@ class OpenStreetMap
                         $x,
                         $y
                     );
+                    if (static::$debugTiles) {
+                        $this->drawTileReference($image, $x, $y, $tileSize, $xTile, $yTile);
+                    }
                     ++$xTile;
                 }
                 ++$yTile;
             }
         }
         return $image;
+    }
+
+    /**
+     * Mode debug : encadre une tuile de noir et y inscrit sa reference z/x/y.
+     *
+     * Le cadre est trace apres le collage, donc il apparait meme quand la tuile
+     * n'a pas pu etre recuperee : un trou reste ainsi identifiable.
+     *
+     * @param Image $image Image de la couche en cours
+     * @param int $x Position horizontale de la tuile dans l'image
+     * @param int $y Position verticale de la tuile dans l'image
+     * @param int $tileSize Taille de la tuile en pixels
+     * @param int $xTile Numero de tuile horizontal
+     * @param int $yTile Numero de tuile vertical
+     * @return void
+     */
+    protected function drawTileReference(Image $image, int $x, int $y, int $tileSize, int $xTile, int $yTile)
+    {
+        $right  = $x + $tileSize - 1;
+        $bottom = $y + $tileSize - 1;
+
+        $image->drawLine($x, $y, $right, $y, 1, '000000');
+        $image->drawLine($x, $bottom, $right, $bottom, 1, '000000');
+        $image->drawLine($x, $y, $x, $bottom, 1, '000000');
+        $image->drawLine($right, $y, $right, $bottom, 1, '000000');
+
+        $label    = $this->mapData->getZoom() . '/' . $xTile . '/' . $yTile;
+        $fontSize = $tileSize / 20;
+
+        // Double en blanc dessous pour rester lisible sur un fond charge.
+        $image->writeText($label, __DIR__ . '/resources/CascadiaCode-Bold.ttf', $fontSize, 'ffffff', $x + 6, $y + 6, Image::ALIGN_LEFT, Image::ALIGN_TOP);
+        $image->writeText($label, __DIR__ . '/resources/CascadiaCode-Light.ttf', $fontSize, '000000', $x + 5, $y + 5, Image::ALIGN_LEFT, Image::ALIGN_TOP);
     }
 
     /**
@@ -240,7 +309,9 @@ class OpenStreetMap
                     ' - ',
                     \array_map(function ($layer) {
                         return $layer->getAttributionText();
-                    }, $this->layers)
+                    }, \array_filter($this->layers, function ($layer) {
+                        return $layer instanceof TileLayer;
+                    }))
                 ),
                 __DIR__ . '/resources/font.ttf',
                 10,
@@ -263,8 +334,7 @@ class OpenStreetMap
     /**
      * Get the map image with markers and lines.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     * @return Image An instance of DantSu\PHPImageEditor\Image
+     * @return Image
      */
     public function getImage(): Image
     {
@@ -278,6 +348,10 @@ class OpenStreetMap
             $markers->draw($image, $this->mapData);
         }
 
-        return $this->drawAttribution($image);
+        if ($this->layers[0] !== false && $this->displayAttributionText) {
+            return $this->drawAttribution($image);
+        }
+
+        return $image;
     }
 }

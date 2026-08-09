@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
-use DantSu\OpenStreetMapStaticAPI\Interfaces\Draw;
-use DantSu\PHPImageEditor\Image;
+use Ycdev\OsmStaticAero\Interfaces\Draw;
+use Ycdev\OsmStaticAero\Image;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\Line draw line on the map.
+ * Ycdev\OsmStaticAero\Line draw line on the map.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
@@ -53,9 +53,7 @@ class Line implements Draw
     /**
      * Draw the line on the map image.
      *
-     * @see https://github.com/DantSu/php-image-editor See more about DantSu\PHPImageEditor\Image
-     *
-     * @param Image $image The map image (An instance of DantSu\PHPImageEditor\Image)
+     * @param Image $image The map image
      * @param MapData $mapData Bounding box of the map
      * @return $this Fluent interface
      */

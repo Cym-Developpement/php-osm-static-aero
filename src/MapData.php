@@ -1,14 +1,14 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
 
-use DantSu\OpenStreetMapStaticAPI\Utils\GeographicConverter;
+use Ycdev\OsmStaticAero\Utils\GeographicConverter;
 
 /**
- * DantSu\OpenStreetMapStaticAPI\MapData convert latitude and longitude to image pixel position.
+ * Ycdev\OsmStaticAero\MapData convert latitude and longitude to image pixel position.
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
@@ -126,16 +126,23 @@ class MapData
         $pxZoneWidth = ($rightTilePos['id'] - $leftTilePos['id']) * $tileSize + $rightTilePos['position'] - $leftTilePos['position'];
         $pxZoneHeight = ($bottomTilePos['id'] - $topTilePos['id']) * $tileSize + $bottomTilePos['position'] - $topTilePos['position'];
 
+        // Une zone plate sur un axe (points alignés, ou point unique comme la
+        // bounding box d'un Text ou d'une Legend) n'impose aucune contrainte
+        // sur cet axe : on l'écarte du calcul plutôt que de diviser par zéro.
+        $ratios = [1];
+        if ($pxZoneHeight > 0) {
+            $ratios[] = ($imageHeight - $padding) / $pxZoneHeight;
+        }
+        if ($pxZoneWidth > 0) {
+            $ratios[] = ($imageWidth - $padding) / $pxZoneWidth;
+        }
+
         return [
             'center' => GeographicConverter::getCenter($topLeft, $bottomRight),
             'zoom' => \intval(
                 \floor(
                     \log(
-                        \min(
-                            1,
-                            ($imageHeight - $padding) / $pxZoneHeight,
-                            ($imageWidth - $padding) / $pxZoneWidth
-                        ) * \pow(2, $zoom)
+                        \min($ratios) * \pow(2, $zoom)
                     ) / 0.69314
                 )
             )
@@ -146,6 +153,10 @@ class MapData
      * @var int zoom
      */
     private $zoom;
+    /**
+     * @var float factor
+     */
+    private $factor;
     /**
      * @var int tile size
      */
@@ -193,12 +204,14 @@ class MapData
      * @param int $zoom
      * @param XY $outputSize
      * @param int $tileSize
+     * @param float $factor
      */
-    public function __construct(LatLng $centerMap, int $zoom, XY $outputSize, int $tileSize)
+    public function __construct(LatLng $centerMap, int $zoom, XY $outputSize, int $tileSize, float $factor = 1.0)
     {
         $this->zoom = $zoom;
         $this->outputSize = $outputSize;
         $this->tileSize = $tileSize;
+        $this->factor = $factor;
 
         $x = static::lngToXTile($centerMap->getLng(), $zoom, $this->tileSize);
         $y = static::latToYTile($centerMap->getLat(), $zoom, $this->tileSize);
@@ -301,6 +314,15 @@ class MapData
     }
 
     /**
+     * Get the factor
+     * @return float factor
+     */
+    public function getFactor(): float
+    {
+        return $this->factor;
+    }
+
+    /**
      * Get tile size
      * @return int tile size
      */
@@ -363,5 +385,43 @@ class MapData
         );
     }
 
+    /**
+     * Convert a XY pixel position in the image to latitude and longitude
+     * @param XY $xy Pixel position to be converted
+     * @return LatLng Latitude and longitude of the pixel position
+     */
+    public function convertPxPositionToLatLng(XY $xy): LatLng
+    {
+        $x = $xy->getX() + $this->mapCropTopLeft->getX();
+        $y = $xy->getY() + $this->mapCropTopLeft->getY();
 
+        $tileX = $this->tileTopLeft->getX() + \floor($x / $this->tileSize);
+        $tileY = $this->tileTopLeft->getY() + \floor($y / $this->tileSize);
+
+        $positionX = $x % $this->tileSize;
+        $positionY = $y % $this->tileSize;
+
+        $lng = static::xTileToLng($tileX, $positionX, $this->zoom, $this->tileSize);
+        $lat = static::yTileToLat($tileY, $positionY, $this->zoom, $this->tileSize);
+
+        return new LatLng($lat, $lng);
+    }
+
+    /**
+     * Get meters per pixel at the map's latitude
+     * @return float
+     */
+    public function getMetersByPx(): float
+    {
+        return ((40075016.686 * (\cos(\deg2rad($this->latLngTopLeft->getLat()))) / (\pow(2, $this->zoom))) / $this->tileSize);
+    }
+
+    /**
+     * Get the map scale ratio
+     * @return float
+     */
+    public function getScale(): float
+    {
+        return (($this->getMetersByPx() * 100) * 118.110223157);
+    }
 }

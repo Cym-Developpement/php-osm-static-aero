@@ -1,12 +1,12 @@
 <?php
 
-namespace DantSu\OpenStreetMapStaticAPI;
+namespace Ycdev\OsmStaticAero;
 
 
 /**
- * DantSu\OpenStreetMapStaticAPI\LatLng define latitude and longitude for map, lines, markers...
+ * Ycdev\OsmStaticAero\LatLng define latitude and longitude for map, lines, markers...
  *
- * @package DantSu\OpenStreetMapStaticAPI
+ * @package Ycdev\OsmStaticAero
  * @author Franck Alary
  * @access public
  * @see https://github.com/DantSu/php-osm-static-api Github page of this project
