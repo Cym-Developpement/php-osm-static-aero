@@ -109,6 +109,29 @@ class PaperMap
     }
 
     /**
+     * Ajoute en bas de la carte le bandeau de legende OpenAIP.
+     *
+     * La hauteur se declare en pourcentage de la hauteur de la carte : c'est le
+     * seul reglage a revoir d'un format a l'autre, la mise en page interne s'y
+     * adapte seule. Le bandeau se superpose a la carte plutot que de la
+     * retailler, comme les autres surcouches.
+     *
+     * L'objet est retourne pour permettre d'affiner l'apparence :
+     *
+     *     $map->addOpenAipLegend(12.0)->setTitle('Legende')->setBackground('ffffff19');
+     *
+     * @param float $heightPercent Hauteur du bandeau, en pourcentage
+     * @return OpenAipLegend Le bandeau ajoute, pour chainage
+     */
+    public function addOpenAipLegend(float $heightPercent = 15.0): OpenAipLegend
+    {
+        $legend = new OpenAipLegend($heightPercent);
+        $this->draw()->addDraw($legend);
+
+        return $legend;
+    }
+
+    /**
      * Generate the composite image
      * @return resource|\GdImage
      */
