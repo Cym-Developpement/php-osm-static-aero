@@ -19,6 +19,12 @@
       "name": "Franck ALARY",
       "homepage": "https://github.com/DantSu",
       "role": "Original Developer"
+    },
+    {
+      "name": "Yann Challet",
+      "email": "yann@cymdev.com",
+      "homepage": "https://github.com/Cym-Developpement",
+      "role": "Fork maintainer"
     }
   ],
   "require": {
