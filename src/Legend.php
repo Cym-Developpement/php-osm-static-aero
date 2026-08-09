@@ -53,6 +53,33 @@ class Legend implements Draw
     private $title;
 
     /**
+     * @var string|null Carte VAC affichee sous la legende
+     */
+    private $vacPath = null;
+
+    /**
+     * @var int Ecart vertical entre la legende et la carte
+     */
+    private $vacMarginTop = 60;
+
+    /**
+     * Ajoute une image sous la legende, mise a la largeur du bloc.
+     *
+     * Prevu pour une page de carte VAC, mais accepte n'importe quelle image.
+     * Elle forme un panneau distinct, sur fond blanc opaque.
+     *
+     * @param string|null $path Chemin de l'image, null pour ne rien afficher
+     * @param int $marginTop Ecart au-dessus de l'image, en pixels
+     * @return $this Interface fluide
+     */
+    public function setVacImage($path, int $marginTop = 60)
+    {
+        $this->vacPath = ($path !== null && $path !== '') ? $path : null;
+        $this->vacMarginTop = $marginTop;
+        return $this;
+    }
+
+    /**
      * @param LatLng|string $position Position or alignment ('left', 'right', 'top', 'bottom')
      * @param string $text Text to display
      * @param int $fontSize Font size
@@ -167,7 +194,10 @@ class Legend implements Draw
         $titleWidth = 0;
         $titleMarginBottom = 20;
         $fontPathTitle = $fontPath;
-        $titleFontSize = $this->fontSize * 2;
+        // Sans ecusson, le titre occupe seul l'en-tete : on l'agrandit pour ne
+        // pas laisser le bloc demarrer sur une ligne maigre. Vaut aussi quand le
+        // logo est declare mais introuvable, puisqu'il ne sera pas affiche.
+        $titleFontSize = $this->fontSize * ($logoImage === null ? 3 : 2);
         $titleColor = $this->fontColor;
         if ($this->title) {
             $titleBBox = $this->calculateTextBoundingBox($this->title, $fontPathTitle, $titleFontSize, $titleColor, 0, 0);
@@ -226,7 +256,26 @@ class Legend implements Draw
             $logoHeight = $logoImage->getHeight();
         }
 
-        // Total content height
+        // Carte VAC en pied de bloc, mise a la largeur du contenu. Le
+        // redimensionnement a lieu ici, une fois maxContentWidth connu.
+        $vacImage = null;
+        $vacHeight = 0;
+        if ($this->vacPath !== null) {
+            if (\file_exists($this->vacPath)) {
+                $vacImage = Image::fromPath($this->vacPath);
+                if ($vacImage->isImageDefined()) {
+                    $vacHeight = \intval($vacImage->getHeight() * ($maxContentWidth / $vacImage->getWidth()));
+                    $vacImage->resize($maxContentWidth, $vacHeight);
+                } else {
+                    $vacImage = null;
+                }
+            } else {
+                \trigger_error("La carte VAC fournie n'existe pas : " . $this->vacPath, E_USER_WARNING);
+            }
+        }
+
+        // Total content height : la VAC n'y entre pas, elle forme un panneau
+        // distinct sous la legende, separe par vacMarginTop.
         $totalContentHeight = $totalTextHeight;
         if ($logoImage) {
             $totalContentHeight += $logoHeight + $logoMarginBottom;
@@ -240,8 +289,12 @@ class Legend implements Draw
         $textY = $center->getY();
         $left = $textX - $maxContentWidth / 2 - $this->padding;
         $right = $textX + $maxContentWidth / 2 + $this->padding;
-        $top = $textY - $totalContentHeight / 2 - $this->padding;
-        $bottom = $textY + $totalContentHeight / 2 + $this->padding;
+        // L'ensemble legende + ecart + panneau VAC est centre d'un bloc ; les
+        // deux rectangles en sont ensuite deduits.
+        $hauteurLegende = $totalContentHeight + 2 * $this->padding;
+        $hauteurVac = $vacImage ? ($this->vacMarginTop + $vacHeight + 2 * $this->padding) : 0;
+        $top = $textY - ($hauteurLegende + $hauteurVac) / 2;
+        $bottom = $top + $hauteurLegende;
 
         // Clamp to image bounds
         $imageWidth = $image->getWidth();
@@ -256,8 +309,10 @@ class Legend implements Draw
             $left += $offset;
             $right += $offset;
         }
-        if ($bottom > $imageHeight) {
-            $offset = $bottom - $imageHeight + $this->padding;
+        // Le recadrage vertical porte sur l'ensemble, panneau VAC compris,
+        // sinon celui-ci deborderait sous le bas de la feuille.
+        if ($bottom + $hauteurVac > $imageHeight) {
+            $offset = $bottom + $hauteurVac - $imageHeight + $this->padding;
             $top -= $offset;
             $bottom -= $offset;
         }
@@ -276,7 +331,10 @@ class Legend implements Draw
         $currentY = $top + $this->padding;
 
         if ($logoImage) {
-            $logoX = $left + $this->padding;
+            // Centre sur la largeur du bloc, comme le titre juste en dessous.
+            // (Image::ALIGN_CENTER centrerait sur la carte entiere, pas sur la
+            // legende.)
+            $logoX = $left + $this->padding + \intval(($maxContentWidth - $logoWidth) / 2);
             $image->pasteOn($logoImage, $logoX, $currentY);
             $currentY += $logoHeight + $logoMarginBottom;
         }
@@ -324,6 +382,21 @@ class Legend implements Draw
                 );
             }
             $currentY += $info['height'];
+        }
+
+        // Panneau de la carte VAC : rectangle distinct, separe de la legende
+        // par vacMarginTop, en blanc totalement opaque — le fond de la legende
+        // est volontairement translucide, la carte ne doit pas l'etre.
+        if ($vacImage) {
+            $vacTop = $bottom + $this->vacMarginTop;
+            $image->drawRectangle(
+                (int) \round($left),
+                (int) \round($vacTop),
+                (int) \round($right),
+                (int) \round($vacTop + $vacHeight + 2 * $this->padding),
+                'ffffff00'
+            );
+            $image->pasteOn($vacImage, (int) \round($left + $this->padding), (int) \round($vacTop + $this->padding));
         }
 
         return $this;
