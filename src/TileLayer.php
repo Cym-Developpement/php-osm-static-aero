@@ -15,9 +15,23 @@ use Ycdev\OsmStaticAero\Image;
 class TileLayer
 {
     const DEFAULT = ['default', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', '© OpenStreetMap contributors'];
-    const OPENAIP = ['openaip', 'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=b85c3693887f9070b9603162d49d9cd2', '© OpenAIP contributors'];
+    const OPENAIP = ['openaip', 'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey={apiKey}', '© OpenAIP contributors'];
     const OSMFR = ['openstreetmapfr', 'https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', '© OpenStreetMap contributors'];
     const OPENTOPO = ['opentopomap', 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', 'Kartendaten: © OpenStreetMap-Mitwirkende, SRTM | Kartendarstellung: © OpenTopoMap (CC-BY-SA)'];
+
+    /**
+     * Nom de la variable d'environnement consultee a defaut de cle explicite.
+     */
+    const OPENAIP_ENV = 'OPENAIP_API_KEY';
+
+    /**
+     * Cle d'API OpenAIP, a definir une fois au demarrage de l'application.
+     *
+     * A defaut, la variable d'environnement OPENAIP_API_KEY est consultee.
+     *
+     * @var string|null
+     */
+    public static $openaipApiKey = null;
 
     /**
      * Default tile server. OpenStreetMaps with related attribution text
@@ -26,6 +40,42 @@ class TileLayer
     public static function defaultTileLayer(): TileLayer
     {
         return new TileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', '© OpenStreetMap contributors');
+    }
+
+    /**
+     * Couche OpenAIP prete a l'emploi, avec une cle d'API explicite.
+     *
+     * @param string|null $apiKey Cle d'API ; null pour utiliser la cle globale
+     *                            ou la variable d'environnement
+     * @return TileLayer
+     * @throws \InvalidArgumentException si aucune cle n'est disponible
+     */
+    public static function openaip(string $apiKey = null): TileLayer
+    {
+        $url = self::OPENAIP[1];
+
+        if ($apiKey !== null) {
+            $url = \str_replace('{apiKey}', \rawurlencode($apiKey), $url);
+        }
+
+        // Sans cle explicite, le constructeur resout {apiKey} lui-meme.
+        return new TileLayer($url, self::OPENAIP[2]);
+    }
+
+    /**
+     * Cle d'API OpenAIP effective : propriete statique, puis environnement.
+     *
+     * @return string|null
+     */
+    public static function resolveApiKey()
+    {
+        if (static::$openaipApiKey !== null && static::$openaipApiKey !== '') {
+            return static::$openaipApiKey;
+        }
+
+        $env = \getenv(self::OPENAIP_ENV);
+
+        return ($env !== false && $env !== '') ? $env : null;
     }
 
     /**
@@ -79,6 +129,23 @@ class TileLayer
      */
     public function __construct(string $url, string $attributionText, string $subdomains = 'abc', array $curlOptions = [], bool $failCurlOnError = false)
     {
+        // {apiKey} est resolu ici, pas au telechargement : une cle absente doit
+        // arreter le programme avant la premiere requete, pas produire des
+        // centaines de tuiles en 401 dont il faudrait ensuite deduire la cause.
+        if (\strpos($url, '{apiKey}') !== false) {
+            $apiKey = static::resolveApiKey();
+
+            if ($apiKey === null) {
+                throw new \InvalidArgumentException(
+                    'Cette couche exige une cle d\'API OpenAIP. Renseignez '
+                    . 'TileLayer::$openaipApiKey, la variable d\'environnement '
+                    . self::OPENAIP_ENV . ', ou appelez TileLayer::openaip($cle).'
+                );
+            }
+
+            $url = \str_replace('{apiKey}', \rawurlencode($apiKey), $url);
+        }
+
         $this->url = $url;
         $this->attributionText = $attributionText;
         $this->subdomains = \str_split($subdomains);

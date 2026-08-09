@@ -284,7 +284,17 @@ The radius is set afterwards, either in meters with `setRadius(float)` — `Pape
 
 Ready-to-use `[name, url, attribution]` triplets: `TileLayer::DEFAULT`, `TileLayer::OSMFR`, `TileLayer::OPENTOPO` and `TileLayer::OPENAIP` (aeronautical overlay).
 
-> `TileLayer::OPENAIP` embeds a shared API key so the examples run out of the box. Replace it with your own before any real use — see the [OpenAIP guide](./docs/openaip.md), which also covers rate limiting, retries and a known rendering defect at low zoom.
+`TileLayer::OPENAIP` carries an `{apiKey}` placeholder rather than a key. Supply yours in one of three ways:
+
+```php
+TileLayer::$openaipApiKey = 'your-key';          // once at boot
+putenv('OPENAIP_API_KEY=your-key');              // or from the environment
+$layer = TileLayer::openaip('your-key');         // or explicitly, per layer
+```
+
+The placeholder is resolved **in the constructor**, so a missing key throws an `InvalidArgumentException` before the first request instead of producing several hundred `401` tiles to diagnose afterwards. Only OpenAIP needs one; the other presets work as-is.
+
+See the [OpenAIP guide](./docs/openaip.md) for rate limiting, retries and a known rendering defect at low zoom.
 
 Building a layer yourself gives access to `setOpacity(float)` — handy to tone down an overlay — and to `setMinZoom(int)` / `setMaxZoom(int)`, which clamp the requested zoom to what the server actually serves. See [TileLayer](./docs/classes/Ycdev/OsmStaticAero/TileLayer.md) for the full surface, including the `{s}` subdomain placeholder.
 

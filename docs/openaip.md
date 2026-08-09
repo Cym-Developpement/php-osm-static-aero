@@ -16,21 +16,30 @@ calling application — see `examples/complete.php`.
 Both services reject unauthenticated requests. Register on openaip.net to obtain
 a key, then pass it in the `apiKey` query parameter.
 
-`TileLayer::OPENAIP` ships with a key so the examples run out of the box. **It is
-a shared key with no guarantee: replace it with your own.** Build the layer
-yourself rather than editing the constant:
+`TileLayer::OPENAIP` carries an `{apiKey}` placeholder, never a key. Supply
+yours in whichever way suits the host application:
 
 ```php
 use Ycdev\OsmStaticAero\TileLayer;
 
-$openaip = new TileLayer(
-    'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=' . $yourKey,
-    '© OpenAIP contributors'
-);
+// Once at boot — the usual choice for an application
+TileLayer::$openaipApiKey = $yourKey;
 
-$map = new OpenStreetMap($center, 12, 1200, 800, TileLayer::OSMFR);
-$map->addLayer($openaip);
+// Or from the environment, without touching the code
+putenv('OPENAIP_API_KEY=' . $yourKey);
+
+// Or explicitly, when a single layer needs a distinct key
+$map->addLayer(TileLayer::openaip($yourKey));
 ```
+
+Resolution order is the static property, then the `OPENAIP_API_KEY` environment
+variable. `TileLayer::resolveApiKey()` returns the effective key, or `null`, and
+is worth reusing for your own REST calls so both go through the same setting.
+
+The placeholder is substituted **in the constructor**, so a missing key throws an
+`InvalidArgumentException` before the first request. That matters here: an A0
+sheet would otherwise emit several hundred `401` responses, and the cause would
+have to be inferred from the failure log.
 
 The key ends up in the tile URL, which is also the disk cache key — so cached
 file names contain it. Keep the cache directory out of version control.

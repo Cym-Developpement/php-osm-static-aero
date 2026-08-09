@@ -30,8 +30,25 @@ if (!is_dir($outputDir)) {
 $center     = new LatLng(46.9626265718427, -0.15698199058019643);
 $nameCenter = "Thouars LFCT";
 
+// --- Clé d'API OpenAIP ---
+// Elle sert aux tuiles comme à l'API REST. Obtenez la vôtre sur openaip.net,
+// puis exportez OPENAIP_API_KEY avant de lancer cet exemple :
+//     OPENAIP_API_KEY=votre_cle php examples/complete.php
+$openaipApiKey = TileLayer::resolveApiKey();
+
+if ($openaipApiKey === null) {
+    exit("Definissez la variable d'environnement OPENAIP_API_KEY.\n");
+}
+
 // --- Récupération des aérodromes via OpenAIP ---
-$openaipAirfield = "https://api.core.openaip.net/api/airports?page=1&limit=100&pos=46.9626265718427%2C-0.15698199058019643&dist=90000&type=2&sortBy=name&sortDesc=true&searchOptLwc=false&apiKey=b85c3693887f9070b9603162d49d9cd2";
+$openaipAirfield = 'https://api.core.openaip.net/api/airports?' . http_build_query([
+    'page'   => 1,
+    'limit'  => 100,
+    'pos'    => '46.9626265718427,-0.15698199058019643',
+    'dist'   => 50000, // plafonné à 50 km par l'API ; au-delà, utilisez bbox
+    'type'   => 2,
+    'apiKey' => $openaipApiKey,
+]);
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $openaipAirfield);
