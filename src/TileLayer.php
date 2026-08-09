@@ -50,7 +50,7 @@ class TileLayer
      * @return TileLayer
      * @throws \InvalidArgumentException si aucune cle n'est disponible
      */
-    public static function openaip(string $apiKey = null): TileLayer
+    public static function openaip(?string $apiKey = null): TileLayer
     {
         $url = self::OPENAIP[1];
 

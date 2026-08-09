@@ -26,10 +26,10 @@ class Text implements Draw
     /**
      * @param LatLng $center Position of the text
      * @param string $text Text to display
-     * @param int $fontSize Font size
+     * @param float $fontSize Font size
      * @param string $fontColor Hex color
      */
-    public function __construct(LatLng $center, string $text, int $fontSize = 30, string $fontColor = '000000')
+    public function __construct(LatLng $center, string $text, float $fontSize = 30.0, string $fontColor = '000000')
     {
         $this->center = $center;
         $this->text = $text;

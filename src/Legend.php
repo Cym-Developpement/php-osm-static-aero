@@ -82,14 +82,16 @@ class Legend implements Draw
     /**
      * @param LatLng|string $position Position or alignment ('left', 'right', 'top', 'bottom')
      * @param string $text Text to display
-     * @param int $fontSize Font size
+     * @param float $fontSize Font size ; les valeurs fractionnaires sont
+     *                       admises, GD sait rendre a ces tailles et une
+     *                       vignette a besoin de tailles sous le pixel
      * @param string $fontColor Hex color
      * @param string $backgroundColor Hex background color
      * @param int $padding Padding in pixels
      * @param string|null $logoPath Path to logo image
      * @param string|null $title Legend title
      */
-    public function __construct($position, string $text, int $fontSize = 30, string $fontColor = '000000', string $backgroundColor = 'ffffff', int $padding = 10, ?string $logoPath = null, ?string $title = null)
+    public function __construct($position, string $text, float $fontSize = 30.0, string $fontColor = '000000', string $backgroundColor = 'ffffff', int $padding = 10, ?string $logoPath = null, ?string $title = null)
     {
         $this->text = $text;
         $this->fontSize = $fontSize;
@@ -142,13 +144,13 @@ class Legend implements Draw
      * Calculate text bounding box without rendering
      * @param string $text
      * @param string $fontPath
-     * @param int $fontSize
+     * @param float $fontSize
      * @param string $color
      * @param int $posX
      * @param int $posY
      * @return array
      */
-    private function calculateTextBoundingBox(string $text, string $fontPath, int $fontSize, string $color, int $posX, int $posY): array
+    private function calculateTextBoundingBox(string $text, string $fontPath, float $fontSize, string $color, int $posX, int $posY): array
     {
         $tempImage = Image::newCanvas(1, 1);
         return $tempImage->writeTextAndGetBoundingBox(
@@ -178,7 +180,10 @@ class Legend implements Draw
         $logoImage = null;
         $logoHeight = 0;
         $logoWidth = 0;
-        $logoMarginBottom = 10;
+        // Marges proportionnelles a la police : en pixels fixes, elles
+        // pesaient un tiers de la hauteur d'un bloc reduit pour une vignette,
+        // alors qu'elles sont negligeables a l'impression.
+        $logoMarginBottom = $this->fontSize * 0.4;
         if ($this->logoPath) {
             if (\file_exists($this->logoPath)) {
                 $logoImage = Image::fromPath($this->logoPath);
@@ -192,7 +197,7 @@ class Legend implements Draw
         // Title calculation
         $titleHeight = 0;
         $titleWidth = 0;
-        $titleMarginBottom = 20;
+        $titleMarginBottom = $this->fontSize * 0.8;
         $fontPathTitle = $fontPath;
         // Sans ecusson, le titre occupe seul l'en-tete : on l'agrandit pour ne
         // pas laisser le bloc demarrer sur une ligne maigre. Vaut aussi quand le
@@ -220,16 +225,16 @@ class Legend implements Draw
             }
             if (\strpos($trimmed, '##') === 0) {
                 $lineText = \trim(\substr($trimmed, 2));
-                $fontSize = \intval($this->fontSize * 1.5);
+                $fontSize = $this->fontSize * 1.5;
             } elseif (\strpos($trimmed, '#') === 0) {
                 $lineText = \trim(\substr($trimmed, 1));
-                $fontSize = \intval($this->fontSize * 2);
+                $fontSize = $this->fontSize * 2;
             } else {
                 $lineText = $trimmed;
             }
             $bbox = $this->calculateTextBoundingBox($lineText, $fontPath, $fontSize, $this->fontColor, 0, 0);
             $lineWidth = \abs($bbox['bottom-right']['x'] - $bbox['top-left']['x']);
-            $lineHeight = \intval($fontSize * 1.4);
+            $lineHeight = $fontSize * 1.4;
             $lineMetrics[] = [
                 'text' => $lineText,
                 'fontSize' => $fontSize,

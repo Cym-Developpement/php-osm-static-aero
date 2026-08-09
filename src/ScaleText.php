@@ -97,10 +97,10 @@ class ScaleText implements Draw
      * Taille de police des deux libelles. Les epaisseurs de trait en derivent,
      * ce qui fait de ce reglage le seul facteur d'echelle de la classe.
      *
-     * @param int $fontSize
+     * @param float $fontSize
      * @return $this Fluent interface
      */
-    public function setFontSize(int $fontSize)
+    public function setFontSize(float $fontSize)
     {
         $this->fontSize = $fontSize;
         return $this;

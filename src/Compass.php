@@ -31,10 +31,10 @@ class Compass implements Draw
     /**
      * @param LatLng $center Center of the compass
      * @param float $size Size in meters
-     * @param int $fontSize Font size for labels
+     * @param float $fontSize Font size for labels
      * @param string $fontColor Hex color
      */
-    public function __construct(LatLng $center, float $size, int $fontSize = 30, string $fontColor = '000000')
+    public function __construct(LatLng $center, float $size, float $fontSize = 30.0, string $fontColor = '000000')
     {
         $this->center = $center;
         $this->size = $size;

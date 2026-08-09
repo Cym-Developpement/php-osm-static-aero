@@ -198,7 +198,7 @@ class VacChart
      * @param string|null $destination Chemin de copie supplementaire (optionnel)
      * @return string|null Chemin du PDF, ou null en cas d'echec
      */
-    public function download(string $icao, string $destination = null)
+    public function download(string $icao, ?string $destination = null)
     {
         $this->lastError = null;
         $icao            = $this->normaliseIcao($icao);
@@ -265,7 +265,7 @@ class VacChart
      * @param string|null $destination Chemin de copie supplementaire (optionnel)
      * @return string|null Chemin du PNG, ou null en cas d'echec
      */
-    public function toPng(string $icao, int $page = 1, int $dpi = 300, string $destination = null)
+    public function toPng(string $icao, int $page = 1, int $dpi = 300, ?string $destination = null)
     {
         $this->lastError = null;
 
