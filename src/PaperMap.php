@@ -59,12 +59,18 @@ class PaperMap
             $this->options[$key] = $value;
         }
         $this->center = $center;
-        $this->size = PaperSize::px($size);
-        $this->bordurePx = PaperSize::px([$this->options['bordure'], 0])[0];
+        // PaperSize::px() rend des millimetres convertis, donc fractionnaires :
+        // les tailles en pixels sont arrondies avant d'etre passees aux couches,
+        // qui les attendent entieres.
+        $this->size = \array_map([$this, 'toPx'], PaperSize::px($size));
+        $this->bordurePx = $this->toPx(PaperSize::px([$this->options['bordure'], 0])[0]);
         $this->layerSize = [($this->size[0] - (2 * $this->bordurePx)), ($this->size[1] - (2 * $this->bordurePx))];
-        $drawLayer = new OpenStreetMap($this->center, $this->options['zoom'], $this->layerSize[0], $this->layerSize[1], false, (256 * $this->options['factor']));
+        $drawLayer = new OpenStreetMap($this->center, $this->options['zoom'], $this->layerSize[0], $this->layerSize[1], false, $this->toPx(256 * $this->options['factor']));
 
-        $this->layerSize = [($this->size[0] - (2 * $this->bordurePx)) / $this->options['factor'], ($this->size[1] - (2 * $this->bordurePx)) / $this->options['factor']];
+        $this->layerSize = [
+            $this->toPx($this->layerSize[0] / $this->options['factor']),
+            $this->toPx($this->layerSize[1] / $this->options['factor']),
+        ];
 
         foreach ($tileLayers as $tileLayer) {
             if (\is_string($tileLayer) && \defined('Ycdev\\OsmStaticAero\\TileLayer::' . $tileLayer)) {
@@ -80,6 +86,17 @@ class PaperMap
             $this->mapLayers[] = new OpenStreetMap($this->center, $this->options['zoom'], $this->layerSize[0], $this->layerSize[1], $tileLayer, 256, 1.0, false);
         }
         $this->mapLayers[] = $drawLayer;
+    }
+
+    /**
+     * Arrondit une dimension en pixels.
+     *
+     * @param float|int $value
+     * @return int
+     */
+    private function toPx($value): int
+    {
+        return (int) \round($value);
     }
 
     /**
@@ -111,7 +128,9 @@ class PaperMap
 
             if ($this->options['factor'] !== 1.0 && $key !== ($layerCount - 1)) {
                 $scaled = \imagescale($gdImage, (\imagesx($gdImage) * $this->options['factor']));
-                \imagedestroy($gdImage);
+                // Reaffecter suffit a liberer l'original : depuis PHP 8.0 une
+                // GdImage est un objet compte par references, et imagedestroy()
+                // n'a plus d'effet — il est deprecie en 8.5.
                 $gdImage = $scaled;
             }
 
@@ -125,7 +144,10 @@ class PaperMap
                 \imagesx($gdImage),
                 \imagesy($gdImage)
             );
-            \imagedestroy($gdImage);
+
+            // Une couche A0 pese plusieurs centaines de Mo : on relache tout de
+            // suite plutot que d'attendre la fin de l'iteration suivante.
+            unset($gdImage);
         }
 
         return $dest_image;
@@ -139,7 +161,7 @@ class PaperMap
     {
         $img = $this->getImage();
         \imagepng($img, $path);
-        \imagedestroy($img);
+        unset($img);
     }
 
     /**

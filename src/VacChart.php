@@ -408,7 +408,7 @@ class VacChart
         ]);
         \curl_exec($curl);
         $code = (int) \curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        \curl_close($curl);
+        unset($curl);
 
         return $code === 200;
     }
@@ -436,7 +436,9 @@ class VacChart
             $errno = \curl_errno($curl);
             $error = \curl_error($curl);
             $code  = (int) \curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            \curl_close($curl);
+            // Depuis PHP 8.0 un CurlHandle est libere par le compteur de
+            // references : curl_close() n'a plus d'effet, et est deprecie en 8.5.
+            unset($curl);
 
             // Un 404 signifie que le terrain n'a pas de VAC publiee : insister
             // ne servirait a rien.

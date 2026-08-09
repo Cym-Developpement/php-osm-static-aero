@@ -1182,9 +1182,15 @@ class Image
     // ===================== CACHE / CURL =====================
 
     /**
-     * @var string
+     * @var string Racine du cache des tuiles
+     *
+     * Statique, comme les autres reglages de tuiles : les Image sont creees au
+     * fond de fromCurl(), sans que l'appelant puisse les configurer une a une.
+     * Un chemin relatif depend du repertoire courant du script ; une
+     * application qui sert des requetes HTTP a tout interet a donner un chemin
+     * absolu.
      */
-    public $cacheDirectory = '.tiles_cache';
+    public static $cacheDirectory = '.tiles_cache';
 
     /**
      * @var string Journal des tuiles non recuperees
@@ -1260,7 +1266,11 @@ class Image
             $contentType = (string) \curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
             $duration    = (float) \curl_getinfo($curl, CURLINFO_TOTAL_TIME);
 
-            \curl_close($curl);
+            // Depuis PHP 8.0 un CurlHandle est un objet libere par le compteur
+            // de references : curl_close() n'a plus d'effet, et est deprecie en
+            // 8.5. La poignee est relachee a la tentative suivante, ou en
+            // sortie de boucle.
+            unset($curl);
 
             if ($failOnError && $curlErrno !== 0) {
                 throw new \Exception($curlError);
@@ -1381,13 +1391,15 @@ class Image
     private function cacheDirectory($url)
     {
         $url    = str_replace('.' . pathinfo($url)['extension'], '', $url);
-        $dirs   = [$this->cacheDirectory];
+        $dirs   = [static::$cacheDirectory];
         $dirs[] = parse_url($url, PHP_URL_HOST);
         $dirs   = array_merge($dirs, explode('/', substr(parse_url($url, PHP_URL_PATH), 1)));
         return array_reduce($dirs, function ($path, $dir) {
             $path .= (is_null($path)) ? $dir : "/$dir";
             if (!is_dir($path)) {
-                mkdir($path);
+                // Recursif : la racine du cache peut etre un chemin absolu dont
+                // les parents n'existent pas encore.
+                mkdir($path, 0777, true);
             }
             return $path;
         }) . '/';

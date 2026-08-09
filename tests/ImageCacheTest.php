@@ -12,13 +12,23 @@ class ImageCacheTest extends TestCase
 {
     private $cacheDir;
 
+    /** @var string */
+    private $previousCacheDirectory;
+
     protected function setUp(): void
     {
         $this->cacheDir = sys_get_temp_dir() . '/test_tiles_cache_' . uniqid();
+
+        // Le reglage est global : on le restaure pour ne pas contaminer les
+        // autres tests.
+        $this->previousCacheDirectory = Image::$cacheDirectory;
+        Image::$cacheDirectory = $this->cacheDir;
     }
 
     protected function tearDown(): void
     {
+        Image::$cacheDirectory = $this->previousCacheDirectory;
+
         if (is_dir($this->cacheDir)) {
             $this->recursiveDelete($this->cacheDir);
         }
@@ -36,7 +46,6 @@ class ImageCacheTest extends TestCase
     public function testCacheFileIdIsConsistent()
     {
         $img = new Image();
-        $img->cacheDirectory = $this->cacheDir;
 
         // Use reflection to test private method
         $reflection = new \ReflectionMethod(Image::class, 'cacheFileId');
@@ -53,7 +62,6 @@ class ImageCacheTest extends TestCase
     public function testSaveToCacheAndGetFromCache()
     {
         $img = new Image();
-        $img->cacheDirectory = $this->cacheDir;
 
         $url = 'https://example.com/tile/1/2/3.png';
         $data = 'fake image data for testing';
@@ -73,7 +81,6 @@ class ImageCacheTest extends TestCase
     public function testIsCachedBeforeAndAfterSave()
     {
         $img = new Image();
-        $img->cacheDirectory = $this->cacheDir;
 
         $url = 'https://example.com/tile/5/6/7.png';
 
