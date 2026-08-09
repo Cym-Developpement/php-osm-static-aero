@@ -51,6 +51,11 @@ class OpenStreetMap
     }
 
     /**
+     * @var bool Mode debug : encadre chaque tuile et y inscrit sa reference z/x/y
+     */
+    public static $debugTiles = false;
+
+    /**
      * @var MapData Data about the generated map (bounding box, size, OSM tile ids...)
      */
     protected $mapData;
@@ -247,12 +252,47 @@ class OpenStreetMap
                         $x,
                         $y
                     );
+                    if (static::$debugTiles) {
+                        $this->drawTileReference($image, $x, $y, $tileSize, $xTile, $yTile);
+                    }
                     ++$xTile;
                 }
                 ++$yTile;
             }
         }
         return $image;
+    }
+
+    /**
+     * Mode debug : encadre une tuile de noir et y inscrit sa reference z/x/y.
+     *
+     * Le cadre est trace apres le collage, donc il apparait meme quand la tuile
+     * n'a pas pu etre recuperee : un trou reste ainsi identifiable.
+     *
+     * @param Image $image Image de la couche en cours
+     * @param int $x Position horizontale de la tuile dans l'image
+     * @param int $y Position verticale de la tuile dans l'image
+     * @param int $tileSize Taille de la tuile en pixels
+     * @param int $xTile Numero de tuile horizontal
+     * @param int $yTile Numero de tuile vertical
+     * @return void
+     */
+    protected function drawTileReference(Image $image, int $x, int $y, int $tileSize, int $xTile, int $yTile)
+    {
+        $right  = $x + $tileSize - 1;
+        $bottom = $y + $tileSize - 1;
+
+        $image->drawLine($x, $y, $right, $y, 1, '000000');
+        $image->drawLine($x, $bottom, $right, $bottom, 1, '000000');
+        $image->drawLine($x, $y, $x, $bottom, 1, '000000');
+        $image->drawLine($right, $y, $right, $bottom, 1, '000000');
+
+        $label    = $this->mapData->getZoom() . '/' . $xTile . '/' . $yTile;
+        $fontSize = $tileSize / 20;
+
+        // Double en blanc dessous pour rester lisible sur un fond charge.
+        $image->writeText($label, __DIR__ . '/resources/CascadiaCode-Bold.ttf', $fontSize, 'ffffff', $x + 6, $y + 6, Image::ALIGN_LEFT, Image::ALIGN_TOP);
+        $image->writeText($label, __DIR__ . '/resources/CascadiaCode-Light.ttf', $fontSize, '000000', $x + 5, $y + 5, Image::ALIGN_LEFT, Image::ALIGN_TOP);
     }
 
     /**
