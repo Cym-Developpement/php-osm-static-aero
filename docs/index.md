@@ -4,6 +4,13 @@
 Documentation for **PHP OSM Static Aero**.
 
 
+## Data sources
+
+| Guide | Contents |
+|---|---|
+| [OpenAIP](./openaip.md) | API key, rate limiting and transient failures, subdomains, a known raster rendering defect at low zoom, caching and attribution. |
+
+
 ## Namespaces
 
 
