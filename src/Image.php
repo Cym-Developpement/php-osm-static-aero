@@ -1187,6 +1187,26 @@ class Image
     public $cacheDirectory = '.tiles_cache';
 
     /**
+     * @var string Journal des tuiles non recuperees
+     */
+    public static $tileLogFile = 'tiles-errors.log';
+
+    /**
+     * @var int Nombre de tuiles en echec depuis le debut du script
+     */
+    public static $tileFailureCount = 0;
+
+    /**
+     * @var int Nombre de tentatives par tuile avant abandon
+     */
+    public static $tileMaxAttempts = 3;
+
+    /**
+     * @var int Delai d'attente cURL par tuile, en secondes
+     */
+    public static $tileTimeout = 15;
+
+    /**
      * @param string $url
      * @param array $curlOptions
      * @param bool $failOnError
@@ -1213,36 +1233,145 @@ class Image
         $defaultCurlOptions = [
             CURLOPT_USERAGENT      => 'php-osm-static-aero/1.0 (https://github.com/ycdev/php-osm-static-aero)',
             CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_TIMEOUT        => static::$tileTimeout,
         ];
 
         if (php_sapi_name() !== 'cli' && isset($_SERVER["REQUEST_SCHEME"], $_SERVER["HTTP_HOST"], $_SERVER["REQUEST_URI"])) {
             $defaultCurlOptions[CURLOPT_REFERER] = \strtolower($_SERVER["REQUEST_SCHEME"] . '://' . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"]);
         }
 
-        $curl = \curl_init();
-        \curl_setopt($curl, CURLOPT_URL, $url);
-        \curl_setopt_array($curl, $defaultCurlOptions + $curlOptions);
+        // Les serveurs de tuiles echouent parfois de facon passagere : une carte
+        // A0 enchaine plus de mille requetes. Un echec reessayable est retente
+        // avec une attente croissante, sinon il laisse un trou dans la carte.
+        $attempt = 0;
 
-        $image = \curl_exec($curl);
+        while (true) {
+            ++$attempt;
 
-        if ($failOnError && \curl_errno($curl)) {
-            $error = \curl_error($curl);
+            $curl = \curl_init();
+            \curl_setopt($curl, CURLOPT_URL, $url);
+            \curl_setopt_array($curl, $defaultCurlOptions + $curlOptions);
+
+            $image = \curl_exec($curl);
+
+            $curlErrno   = \curl_errno($curl);
+            $curlError   = \curl_error($curl);
+            $httpCode    = (int) \curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $contentType = (string) \curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
+            $duration    = (float) \curl_getinfo($curl, CURLINFO_TOTAL_TIME);
+
             \curl_close($curl);
-            throw new \Exception($error);
+
+            if ($failOnError && $curlErrno !== 0) {
+                throw new \Exception($curlError);
+            }
+
+            // Sans ce diagnostic, un echec produit une tuile transparente et
+            // silencieuse : data() echoue, resetFields() vide l'objet et
+            // pasteOn() sort sur isImageDefined() sans rien signaler.
+            $failure = null;
+            if ($curlErrno !== 0) {
+                $failure = 'cURL #' . $curlErrno . ' ' . $curlError;
+            } elseif ($httpCode !== 200) {
+                // 204 : le serveur indique explicitement qu'il n'a pas de
+                // donnee pour cette tuile. Ce n'est pas une panne, mais ca
+                // laisse un trou dans la surcouche, donc ca se journalise.
+                $failure = 'HTTP ' . $httpCode . ($httpCode === 204 ? ' (tuile sans donnee)' : '');
+            } elseif ($image === false || $image === '') {
+                $failure = 'reponse vide';
+            } elseif (! static::looksLikeImage($image)) {
+                $failure = 'contenu non image (' . ($contentType !== '' ? $contentType : 'type inconnu') . ')';
+            }
+
+            if ($failure === null) {
+                break;
+            }
+
+            // Inutile d'insister quand le serveur a repondu clairement :
+            // 204 pas de donnee, 401/403 cle refusee, 404 tuile inexistante.
+            $retryable = $curlErrno !== 0
+            || $httpCode === 429
+            || $httpCode >= 500
+            || $httpCode === 200;
+
+            if (! $retryable || $attempt >= static::$tileMaxAttempts) {
+                static::logTileFailure($url, $failure, \strlen((string) $image), $duration, $attempt);
+                break;
+            }
+
+            // Attente croissante : 500 ms, 1 s, 2 s...
+            \usleep(500000 * (1 << ($attempt - 1)));
         }
 
-        \curl_close($curl);
-
-        if ($cacheData && $image !== false) {
+        // Seuls les succes sont mis en cache : un corps d'erreur enregistre en
+        // .png serait resservi comme une tuile pendant toute sa duree de vie.
+        if ($failure === null && $cacheData) {
             $this->saveToCache($url, $image);
         }
 
-        if ($image === false) {
+        if ($failure !== null || $image === false) {
             return $this->resetFields();
         }
 
         return $this->data($image);
+    }
+
+    /**
+     * Reconnait les formats renvoyes par les serveurs de tuiles a leur signature.
+     *
+     * @param string $data Donnees brutes de la reponse
+     * @return bool
+     */
+    private static function looksLikeImage(string $data): bool
+    {
+        return \strncmp($data, "\x89PNG\r\n\x1a\n", 8) === 0
+        || \strncmp($data, "\xFF\xD8\xFF", 3) === 0
+        || \strncmp($data, 'GIF8', 4) === 0
+        || \strncmp($data, 'RIFF', 4) === 0;
+    }
+
+    /**
+     * Journalise une tuile non recuperee, dans un fichier et sur STDERR en CLI.
+     *
+     * @param string $url Url de la tuile
+     * @param string $reason Motif de l'echec
+     * @param int $bytes Taille de la reponse
+     * @param float $duration Duree de la requete en secondes
+     * @param int $attempts Nombre de tentatives effectuees
+     * @return void
+     */
+    private static function logTileFailure(string $url, string $reason, int $bytes, float $duration, int $attempts = 1)
+    {
+        ++static::$tileFailureCount;
+
+        if ($attempts > 1) {
+            $reason .= ' apres ' . $attempts . ' essais';
+        }
+
+        // La cle d'API ne doit pas se retrouver en clair dans le journal.
+        $safeUrl = \preg_replace('/(apiKey|api_key|key)=[^&]*/i', '$1=***', $url);
+
+        $tile = '';
+        if (\preg_match('#/(\d+)/(\d+)/(\d+)(?:\.\w+)?(?:\?|$)#', $url, $m)) {
+            $tile = 'z=' . $m[1] . ' x=' . $m[2] . ' y=' . $m[3];
+        }
+
+        $line = \sprintf(
+            "[%s] %-22s %-22s %-34s %7d o %6.2fs  %s\n",
+            \date('Y-m-d H:i:s'),
+            (string) \parse_url($url, PHP_URL_HOST),
+            $tile,
+            $reason,
+            $bytes,
+            $duration,
+            $safeUrl
+        );
+
+        \file_put_contents(static::$tileLogFile, $line, FILE_APPEND);
+
+        if (\php_sapi_name() === 'cli') {
+            \fwrite(STDERR, 'Tuile manquante : ' . \trim($line) . "\n");
+        }
     }
 
     /**
