@@ -58,6 +58,11 @@ class ScaleText implements Draw
     private $marginMm = 10.0;
 
     /**
+     * @var float Resolution de sortie effective, en points par pouce
+     */
+    private $dpi = self::DPI;
+
+    /**
      * @param LatLng $center Position of the scale bar
      * @param float $meters Length of the scale bar in meters
      * @param string $color Hex color
@@ -98,6 +103,24 @@ class ScaleText implements Draw
     public function setFontSize(int $fontSize)
     {
         $this->fontSize = $fontSize;
+        return $this;
+    }
+
+    /**
+     * Resolution a laquelle l'image sera reproduite, si elle differe des 300
+     * DPI de PaperSize::px().
+     *
+     * Sert a produire un apercu : une image rendue a taille reduite represente
+     * la meme carte imprimee plus petit. En annoncant la resolution effective
+     * — 300 / facteur de reduction — la barre affiche le rapport d'echelle et
+     * la marge de la carte finale, et non ceux de la vignette.
+     *
+     * @param float $dpi
+     * @return $this Fluent interface
+     */
+    public function setDpi(float $dpi)
+    {
+        $this->dpi = $dpi > 0 ? $dpi : self::DPI;
         return $this;
     }
 
@@ -208,7 +231,7 @@ class ScaleText implements Draw
     private function alignedPosition(MapData $mapData): LatLng
     {
         $size = $mapData->getOutputSize();
-        $margin = $this->marginMm * self::DPI / 25.4;
+        $margin = $this->marginMm * $this->dpi / 25.4;
         $pad = $this->backgroundColor !== null ? $this->backgroundPadding : 0;
 
         // Demi-hauteur de la barre : les montants s'etendent de meters/10 de
@@ -296,7 +319,7 @@ class ScaleText implements Draw
         }
 
         // Longueur de la barre sur le papier, en metres.
-        $paper = $pixels * 0.0254 / self::DPI;
+        $paper = $pixels * 0.0254 / $this->dpi;
         $scale = $this->meters / $paper;
 
         // Arrondi a deux chiffres significatifs : donne 1:150 000 comme
